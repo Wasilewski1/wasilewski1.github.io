@@ -94,12 +94,14 @@ async function pullCloud() {
     }
     if (restoreLocal()) setSync(true, state.items.length ? ("On this device · " + state.items.length) : "Ready on this device");
     else setSync(true, "Ready on this device");
+    toast("Cloud list not found on this network. Stay on the same Wi-Fi as the PC, or use cellular.", true);
     if (typeof paint === "function") paint();
     return false;
   } catch (e) {
     showCloudErr(String(e.message || e));
     if (restoreLocal()) setSync(true, "Offline — using this device");
     else setSync(false, "Cloud blocked on this Wi-Fi");
+    toast(String(e.message || e), true);
     if (typeof paint === "function") paint();
     return false;
   }
@@ -135,7 +137,7 @@ function clearAllLocal() {
   state = emptyState();
   if (typeof paint === "function") paint();
   setSync(true, "Cleared this device");
-  toast("This device is empty. Tap Reload from cloud to get the warehouse list back.");
+  toast("This device is empty. Tap Sync with cloud.");
 }
 var _persist = persistLocal;
 persistLocal = function () {
@@ -151,7 +153,9 @@ document.addEventListener("visibilitychange", function () {
 });
 setTimeout(function () { try { pullCloud(); } catch (e) {} }, 400);
 setTimeout(function () {
-  var s = document.createElement("script");
-  s.src = "js/clear.js?v=1";
-  document.body.appendChild(s);
+  ["js/clear.js?v=1", "js/syncbtn.js?v=1"].forEach(function (src) {
+    var s = document.createElement("script");
+    s.src = src;
+    document.body.appendChild(s);
+  });
 }, 200);
