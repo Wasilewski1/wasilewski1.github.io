@@ -1,4 +1,6 @@
-var CLOUD = "https://extendsclass.com/api/json-storage/bin/cbffefc";
+var CLOUD_NEW = "https://extendsclass.com/api/json-storage/bin";
+var CLOUD_GET = "https://extendsclass.com/api/json-storage/bin/";
+var POINTER = "https://ntfy.sh/fenchem-wasilewski-stock";
 var cloudTimer = 0;
 var cloudBusy = false;
 function cloudPayload() {
@@ -7,13 +9,14 @@ function cloudPayload() {
     updatedAt: new Date().toISOString(),
     settings: state.settings,
     items: state.items,
-    txns: state.txns.slice(0, 300)
+    txns: (state.txns || []).slice(0, 300)
   });
 }
 function applyCloud(data) {
   if (!data || typeof data !== "object") return false;
+  if (!Array.isArray(data.items)) return false;
   state.settings = Object.assign({}, emptyState().settings, data.settings || state.settings || {});
-  state.items = (data.items || []).map(normalizeItem);
+  state.items = data.items.map(normalizeItem);
   state.txns = data.txns || [];
   try {
     localStorage.setItem("scantrack.cache", JSON.stringify(state));
@@ -22,22 +25,42 @@ function applyCloud(data) {
   } catch (e) {}
   return true;
 }
+async function latestCloudId() {
+  var cached = "";
+  try { cached = localStorage.getItem("scantrack.cloudId") || ""; } catch (e) {}
+  try {
+    var res = await fetch(POINTER + "/json?poll=1&since=all&t=" + Date.now(), { cache: "no-store" });
+    var txt = await res.text();
+    var lines = txt.trim().split("\n").filter(Boolean);
+    for (var i = lines.length - 1; i >= 0; i--) {
+      try {
+        var msg = JSON.parse(lines[i]);
+        if (msg && msg.message) return String(msg.message).trim();
+      } catch (e) {}
+    }
+  } catch (e) {}
+  return cached;
+}
 async function pullCloud() {
   setSync(false, "Loading cloud...");
   try {
-    var res = await fetch(CLOUD + "?t=" + Date.now(), { cache: "no-store" });
-    if (!res.ok) throw new Error("cloud " + res.status);
+    var id = await latestCloudId();
+    if (!id) {
+      if (restoreLocal()) setSync(true, state.items.length ? "Saved on this device" : "Ready on this device");
+      else setSync(true, "Ready on this device");
+      if (typeof paint === "function") paint();
+      return false;
+    }
+    var res = await fetch(CLOUD_GET + id + "?t=" + Date.now(), { cache: "no-store" });
+    if (!res.ok) throw new Error("get " + res.status);
     var data = await res.json();
-    if (data && Array.isArray(data.items)) {
-      var localCount = (state.items || []).length;
-      var cloudCount = data.items.length;
-      if (cloudCount >= localCount || !localCount) applyCloud(data);
-      else applyCloud(data);
+    if (applyCloud(data)) {
+      try { localStorage.setItem("scantrack.cloudId", id); } catch (e) {}
       setSync(true, "Saved in cloud");
       if (typeof paint === "function") paint();
       return true;
     }
-    setSync(true, "Cloud empty — using this device");
+    setSync(true, "Cloud empty");
     return false;
   } catch (e) {
     if (restoreLocal()) setSync(true, "Offline — using this device");
@@ -50,13 +73,15 @@ async function pushCloud() {
   if (cloudBusy) return;
   cloudBusy = true;
   try {
-    var res = await fetch(CLOUD, {
-      method: "PUT",
-      headers: { "Content-Type": "text/plain", "Accept": "application/json" },
-      body: cloudPayload()
-    });
-    if (res.ok) setSync(true, "Saved in cloud");
-    else setSync(true, "Saved on this device");
+    var created = await fetch(CLOUD_NEW, { method: "POST", headers: { "Content-Type": "text/plain" }, body: cloudPayload() });
+    var body = await created.text();
+    var info = {};
+    try { info = JSON.parse(body); } catch (e) {}
+    var id = info.id || "";
+    if (!created.ok || !id) throw new Error("create failed");
+    await fetch(POINTER, { method: "POST", headers: { "Content-Type": "text/plain" }, body: id });
+    try { localStorage.setItem("scantrack.cloudId", id); } catch (e) {}
+    setSync(true, "Saved in cloud");
   } catch (e) {
     setSync(true, "Saved on this device");
   }
@@ -65,16 +90,12 @@ async function pushCloud() {
 var _persist = persistLocal;
 persistLocal = function () {
   _persist();
-  setSync(true, "Saving to cloud...");
   clearTimeout(cloudTimer);
-  cloudTimer = setTimeout(pushCloud, 400);
+  cloudTimer = setTimeout(pushCloud, 500);
 };
 saveCloud = persistLocal;
-loadCloud = function () {
-  restoreLocal();
-  pullCloud();
-};
+loadCloud = pullCloud;
 document.addEventListener("visibilitychange", function () {
   if (document.visibilityState === "visible") pullCloud();
-  else persistLocal();
 });
+setTimeout(function () { try { pullCloud(); } catch (e) {} }, 400);
