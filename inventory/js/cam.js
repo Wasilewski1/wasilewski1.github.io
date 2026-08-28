@@ -2,6 +2,7 @@ let stream = null;
 let raf = 0;
 let videoEl = null;
 let scanCanvas = null;
+let lastTick = 0;
 function loadScript(src) {
   return new Promise(function (resolve, reject) {
     var s = document.createElement("script");
@@ -22,57 +23,75 @@ async function ensureJsQR() {
   }
   return !!window.jsQR;
 }
+function decodeImageData(img) {
+  if (window.jsQR) {
+    var code = jsQR(img.data, img.width, img.height, { inversionAttempts: "attemptBoth" });
+    if (code && code.data) return String(code.data).trim();
+  }
+  return "";
+}
 window.startCam = async function startCam() {
   var hint = document.getElementById("cam-hint");
   hint.textContent = "Starting camera...";
   await window.stopCam();
-  var ready = await ensureJsQR();
-  if (!ready) {
-    hint.textContent = "Scanner blocked on this Wi-Fi. Tap Take photo of QR.";
-    return;
-  }
+  await ensureJsQR();
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    hint.textContent = "No live camera in this browser. Tap Take photo of QR.";
+    hint.textContent = "No live camera here. Tap Take photo of QR.";
     return;
   }
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: "environment" } },
+      video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
       audio: false
     });
   } catch (e) {
-    hint.textContent = "Allow the camera, or tap Take photo of QR.";
-    return;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    } catch (e2) {
+      hint.textContent = "Allow the camera, or tap Take photo of QR.";
+      return;
+    }
   }
   var box = document.getElementById("reader");
   box.innerHTML = "";
   videoEl = document.createElement("video");
   videoEl.setAttribute("playsinline", "true");
+  videoEl.setAttribute("muted", "true");
   videoEl.setAttribute("autoplay", "true");
   videoEl.muted = true;
+  videoEl.playsInline = true;
   videoEl.style.width = "100%";
   videoEl.style.display = "block";
   videoEl.srcObject = stream;
   box.appendChild(videoEl);
   try { await videoEl.play(); } catch (e) {}
   running = true;
-  hint.textContent = "Camera is on. Point it at the pallet QR.";
+  hint.textContent = "Camera is on. Fill the box with the printed QR.";
   tick();
 };
 function tick() {
   if (!running || !videoEl) return;
-  if (videoEl.readyState >= 2 && window.jsQR) {
+  var now = Date.now();
+  if (now - lastTick > 180 && videoEl.readyState >= 2) {
+    lastTick = now;
     var w = videoEl.videoWidth, h = videoEl.videoHeight;
     if (w && h) {
+      var max = 480;
+      var scale = Math.min(1, max / Math.max(w, h));
+      var cw = Math.max(160, Math.round(w * scale));
+      var ch = Math.max(160, Math.round(h * scale));
       if (!scanCanvas) scanCanvas = document.createElement("canvas");
-      scanCanvas.width = w;
-      scanCanvas.height = h;
-      var ctx = scanCanvas.getContext("2d");
-      ctx.drawImage(videoEl, 0, 0, w, h);
+      scanCanvas.width = cw;
+      scanCanvas.height = ch;
+      var ctx = scanCanvas.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(videoEl, 0, 0, cw, ch);
       try {
-        var img = ctx.getImageData(0, 0, w, h);
-        var code = jsQR(img.data, w, h);
-        if (code && code.data) onScan(code.data);
+        var img = ctx.getImageData(0, 0, cw, ch);
+        var text = decodeImageData(img);
+        if (text) {
+          document.getElementById("cam-hint").textContent = "Got it: " + text;
+          onScan(text);
+        }
       } catch (e) {}
     }
   }
@@ -89,18 +108,20 @@ window.stopCam = async function stopCam() {
 window.scanPhoto = function scanPhoto(file) {
   if (!file) return;
   ensureJsQR().then(function (ok) {
-    if (!ok) { toast("Scanner not ready. Try Take photo again in a second.", true); return; }
+    if (!ok) { toast("Scanner not ready. Type the Material No instead.", true); return; }
     var img = new Image();
     img.onload = function () {
+      var max = 900;
+      var scale = Math.min(1, max / Math.max(img.width, img.height));
       var c = document.createElement("canvas");
-      c.width = img.width;
-      c.height = img.height;
+      c.width = Math.round(img.width * scale);
+      c.height = Math.round(img.height * scale);
       var ctx = c.getContext("2d");
-      ctx.drawImage(img, 0, 0);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
       var data = ctx.getImageData(0, 0, c.width, c.height);
-      var code = jsQR(data.data, c.width, c.height);
-      if (code && code.data) onScan(code.data);
-      else toast("No QR found in that photo. Get closer and try again.", true);
+      var text = decodeImageData(data);
+      if (text) onScan(text);
+      else toast("Could not read that photo. Type the Material No or Batch instead.", true);
     };
     img.src = URL.createObjectURL(file);
   });
