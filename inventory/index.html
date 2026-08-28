@@ -66,7 +66,7 @@ th{background:var(--gold);color:#1a1400;font-size:11px;font-weight:800;position:
 </head>
 <body>
 <div class="toast" id="toast"></div>
-<header class="top"><div class="top-inner"><div><div class="mark">FENCHEM</div><h1>Warehouse Inventory</h1><p>Scan pallets in and out. Same list on phone and computer.</p></div><div class="sync"><span class="dot" id="dot"></span><span id="synctxt">Starting...</span></div></div></header>
+<header class="top"><div class="top-inner"><div><div class="mark">FENCHEM</div><h1>Warehouse Inventory</h1><p>Scan pallets in and out. Same list on this phone or computer after you close the page.</p></div><div class="sync"><span class="dot ok" id="dot"></span><span id="synctxt">Ready on this device</span></div></div></header>
 <main class="wrap">
 <section class="page on" id="page-scan">
 <div class="modes"><button class="mode in on" id="btn-in" onclick="setMode('in')">SCAN IN</button><button class="mode out" id="btn-out" onclick="setMode('out')">SCAN OUT</button></div>
@@ -102,7 +102,7 @@ th{background:var(--gold);color:#1a1400;font-size:11px;font-weight:800;position:
 </section>
 <section class="page" id="page-more">
 <div class="card tight"><label>Your name</label><input id="operator" placeholder="e.g. Gabe" /><label>Site name</label><input id="sitename" placeholder="Mount Laurel warehouse" /><div style="height:10px"></div><button class="primary" onclick="saveSettings()">Save</button></div>
-<div class="card tight"><p class="muted" style="margin-bottom:10px">Upload the warehouse spreadsheet. CSV always works: Excel then File then Save As then CSV.</p><div class="row"><button class="gold" onclick="document.getElementById('xls2').click()">Upload Excel / CSV</button><button class="ghost" onclick="backup()">Download backup</button><button class="ghost" onclick="document.getElementById('restore').click()">Restore backup</button></div>
+<div class="card tight"><p class="muted" style="margin-bottom:10px">Everything saves on this phone or computer when you close the page. Also download a backup after a big upload.</p><div class="row"><button class="gold" onclick="document.getElementById('xls2').click()">Upload Excel / CSV</button><button class="ghost" onclick="backup()">Download backup</button><button class="ghost" onclick="document.getElementById('restore').click()">Restore backup</button></div>
 <input id="xls2" type="file" accept=".csv,.xlsx,.xls,text/csv" hidden onchange="importSpreadsheet(this.files[0]); this.value='';" />
 <input id="restore" type="file" accept="application/json" hidden onchange="restoreFile(this.files[0])" /></div>
 </section>
@@ -127,6 +127,7 @@ th{background:var(--gold);color:#1a1400;font-size:11px;font-weight:800;position:
 </div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="js/app.js?v=6"></script>
+<script src="js/store1.js?v=1"></script>
+<script src="js/store2.js?v=1"></script>
 <script src="js/cam.js?v=1"></script>
 </body></html>
