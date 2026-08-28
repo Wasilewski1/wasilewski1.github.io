@@ -85,6 +85,7 @@ function normalizeItem(i) {
     materialNo: i.materialNo || i.sku || "",
     mCode: i.mCode || "",
     description: i.description || i.name || "",
+    bay: i.bay || "",
     location: i.location || "",
     locationDesc: i.locationDesc || "",
     batchNo: i.batchNo || "",
@@ -182,7 +183,8 @@ function findItem(code) {
     state.items.find((i) => String(i.batchNo).toLowerCase() === c) ||
     state.items.find((i) => String(i.materialNo).toLowerCase() === c) ||
     state.items.find((i) => String(i.mCode).toLowerCase() === c) ||
-    state.items.find((i) => String(i.vendorBatch).toLowerCase() === c)
+    state.items.find((i) => String(i.vendorBatch).toLowerCase() === c) ||
+    state.items.find((i) => String(i.bay).toLowerCase() === c)
   );
 }
 
@@ -204,12 +206,17 @@ function lookup(code) {
     "<p class='muted'>Material " + escapeHtml(item.materialNo) +
     (item.mCode ? " · M " + escapeHtml(item.mCode) : "") +
     "<br>Batch " + escapeHtml(item.batchNo) +
+    "<br>Bay: <b>" + escapeHtml(item.bay || "not set") + "</b>" +
     (item.location ? " · " + escapeHtml(item.location) : "") +
+    (item.locationDesc ? " " + escapeHtml(item.locationDesc) : "") +
     "<br>On hand: <b>" + item.qty + " " + escapeHtml(item.unit) + "</b>" +
     (expNote ? " · " + expNote : "") + "</p>" +
     "<label>How much?</label><div class='qty'><button type='button' onclick='nudge(-1)'>−</button>" +
     "<input id='qty' type='number' min='0.01' step='0.01' value='1' />" +
     "<button type='button' onclick='nudge(1)'>+</button></div>" +
+    "<label>Bay / location now (change if you moved it)</label>" +
+    "<div class='grid2'><input id='move-bay' value='" + escapeHtml(item.bay || "") + "' placeholder='Bay' />" +
+    "<input id='move-loc' value='" + escapeHtml(item.location || "") + "' placeholder='Bin / rack' /></div>" +
     "<label>Note</label><input id='note' placeholder='Who / truck / reason' />" +
     "<div style='height:10px'></div>" +
     "<button class='" + (mode === "in" ? "inbtn" : "outbtn") + "' onclick='confirmMove(\"" + item.id + "\")'>" +
@@ -228,6 +235,10 @@ function confirmMove(id) {
     toast("Not enough stock. On hand: " + item.qty + " " + item.unit, true);
     return;
   }
+  const newBay = (document.getElementById("move-bay") || {}).value;
+  const newLoc = (document.getElementById("move-loc") || {}).value;
+  if (typeof newBay === "string") item.bay = newBay.trim();
+  if (typeof newLoc === "string") item.location = newLoc.trim();
   item.qty = roundQty(item.qty + (mode === "in" ? qty : -qty));
   state.txns.unshift({
     at: new Date().toISOString(), type: mode, itemId: item.id,
@@ -244,7 +255,7 @@ function roundQty(n) { return Math.round(n * 1000) / 1000; }
 function openForm(prefill) {
   document.getElementById("modal").classList.add("open");
   document.getElementById("form-title").textContent = "Add material / pallet";
-  ["f-id","f-materialNo","f-mCode","f-description","f-location","f-locationDesc","f-batchNo","f-vendorBatch","f-poNumber","f-poItem","f-salesName","f-salesDept","f-packaging","f-profitCenter","f-dom","f-exp"].forEach((id) => {
+  ["f-id","f-materialNo","f-mCode","f-description","f-bay","f-location","f-locationDesc","f-batchNo","f-vendorBatch","f-poNumber","f-poItem","f-salesName","f-salesDept","f-packaging","f-profitCenter","f-dom","f-exp"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.value = "";
   });
@@ -262,6 +273,7 @@ function editForm(id) {
   document.getElementById("f-materialNo").value = i.materialNo;
   document.getElementById("f-mCode").value = i.mCode;
   document.getElementById("f-description").value = i.description;
+  document.getElementById("f-bay").value = i.bay || "";
   document.getElementById("f-location").value = i.location;
   document.getElementById("f-locationDesc").value = i.locationDesc;
   document.getElementById("f-batchNo").value = i.batchNo;
@@ -284,15 +296,16 @@ function saveForm() {
   const materialNo = val("f-materialNo");
   const description = val("f-description");
   const batchNo = val("f-batchNo");
+  const bay = val("f-bay");
   const qty = Number(document.getElementById("f-qty").value);
-  if (!materialNo || !description || !batchNo || !(qty >= 0)) {
-    toast("Need Material No, Description, Batch No, and Quantity.", true);
+  if (!materialNo || !description || !batchNo || !bay || !(qty >= 0)) {
+    toast("Need Material No, Description, Batch No, Bay, and Quantity.", true);
     return;
   }
   const rec = {
     id: val("f-id") || uid(),
     materialNo, mCode: val("f-mCode"), description,
-    location: val("f-location"), locationDesc: val("f-locationDesc"),
+    bay, location: val("f-location"), locationDesc: val("f-locationDesc"),
     batchNo, vendorBatch: val("f-vendorBatch"),
     qty, unit: document.getElementById("f-unit").value,
     createdOn: val("f-createdOn") || today(),
@@ -313,10 +326,23 @@ function val(id) { return document.getElementById(id).value.trim(); }
 
 function filteredItems() {
   const q = (document.getElementById("search")?.value || "").toLowerCase();
-  return state.items.filter((i) =>
-    [i.materialNo, i.mCode, i.description, i.location, i.locationDesc, i.batchNo, i.vendorBatch, i.poNumber, i.salesName, i.packaging]
-      .join(" ").toLowerCase().includes(q)
-  ).sort((a, b) => (a.description || "").localeCompare(b.description || ""));
+  const bay = (document.getElementById("bay-filter")?.value || "").toLowerCase();
+  const sel = document.getElementById("bay-filter");
+  if (sel) {
+    const current = sel.value;
+    const bays = Array.from(new Set(state.items.map((i) => (i.bay || "").trim()).filter(Boolean))).sort();
+    sel.innerHTML = "<option value=''>All bays</option>" + bays.map((b) =>
+      "<option" + (b === current ? " selected" : "") + ">" + escapeHtml(b) + "</option>"
+    ).join("");
+    if (current && bays.includes(current)) sel.value = current;
+  }
+  return state.items.filter((i) => {
+    const hay = [i.materialNo, i.mCode, i.description, i.bay, i.location, i.locationDesc, i.batchNo, i.vendorBatch, i.poNumber, i.salesName, i.packaging]
+      .join(" ").toLowerCase();
+    if (q && !hay.includes(q)) return false;
+    if (bay && String(i.bay || "").toLowerCase() !== bay) return false;
+    return true;
+  }).sort((a, b) => (a.bay || "").localeCompare(b.bay || "") || (a.description || "").localeCompare(b.description || ""));
 }
 
 function drawItems() {
@@ -330,11 +356,11 @@ function drawItems() {
     return;
   }
   if (sheet) {
-    const cols = ["Material No","M code","English Description","Location","Location Description","Batch No","Vendor Batch","Quantity","Unit","Created On","Date of Manufacture","Expiration Date","PO Number","PO Item","Remaining days","Stock Age","Sales Name","Sales Department","Packaging","Profit Center",""];
+    const cols = ["Bay","Location","Location Description","Material No","M code","English Description","Batch No","Vendor Batch","Quantity","Unit","Created On","Date of Manufacture","Expiration Date","PO Number","PO Item","Remaining days","Stock Age","Sales Name","Sales Department","Packaging","Profit Center",""];
     sheet.innerHTML = "<table><thead><tr>" + cols.map((c) => "<th>" + c + "</th>").join("") + "</tr></thead><tbody>" +
       rows.map((i) => {
         const cells = [
-          i.materialNo, i.mCode, i.description, i.location, i.locationDesc, i.batchNo, i.vendorBatch,
+          i.bay, i.location, i.locationDesc, i.materialNo, i.mCode, i.description, i.batchNo, i.vendorBatch,
           i.qty, i.unit, i.createdOn, i.dateOfManufacture, i.expirationDate, i.poNumber, i.poItem,
           remainingDays(i), stockAge(i), i.salesName, i.salesDept, i.packaging, i.profitCenter
         ];
@@ -352,10 +378,12 @@ function drawItems() {
     else if (rem !== "" && rem <= 30) badge = "<span class='badge badge-exp'>" + rem + " days left</span>";
     return "<div class='item'><div class='row' style='align-items:flex-start'><div>" +
       "<b>" + escapeHtml(i.description) + "</b> " + badge +
+      "<div class='muted'>Bay <b>" + escapeHtml(i.bay || "—") + "</b>" +
+      (i.location ? " · " + escapeHtml(i.location) : "") +
+      (i.locationDesc ? " " + escapeHtml(i.locationDesc) : "") + "</div>" +
       "<div class='muted'>Mat " + escapeHtml(i.materialNo) +
       (i.mCode ? " · M " + escapeHtml(i.mCode) : "") +
-      " · Batch " + escapeHtml(i.batchNo) +
-      (i.location ? " · " + escapeHtml(i.location) : "") + "</div>" +
+      " · Batch " + escapeHtml(i.batchNo) + "</div>" +
       (i.poNumber ? "<div class='muted'>PO " + escapeHtml(i.poNumber) + (i.poItem ? " / " + escapeHtml(i.poItem) : "") + "</div>" : "") +
       "</div><div class='big'>" + i.qty + "<div class='muted' style='font-size:12px;font-weight:700'>" + escapeHtml(i.unit) + "</div></div></div>" +
       "<div class='actions'>" +
@@ -406,6 +434,7 @@ function printLabel(id) {
       (i.vendorBatch ? " · Vendor " + escapeHtml(i.vendorBatch) : "") + "</div>" +
       "<div class='m'>Qty: <b>" + i.qty + " " + escapeHtml(i.unit) + "</b>" +
       (i.packaging ? " · " + escapeHtml(i.packaging) : "") + "</div>" +
+      "<div class='m'>Bay: <b>" + escapeHtml(i.bay || "not set") + "</b></div>" +
       (i.location ? "<div class='m'>Location: <b>" + escapeHtml(i.location) + "</b> " + escapeHtml(i.locationDesc || "") + "</div>" : "") +
       (i.expirationDate ? "<div class='m'>Expires: <b>" + escapeHtml(i.expirationDate) + "</b>" + (rem !== "" ? " (" + rem + " days)</div>" : "</div>") : "") +
       (i.poNumber ? "<div class='m'>PO: " + escapeHtml(i.poNumber) + (i.poItem ? " / " + escapeHtml(i.poItem) : "") + "</div>" : "") +
@@ -451,13 +480,23 @@ function saveSettings() {
 }
 
 function exportCsv() {
-  const header = ["Material No","M code","English Description","Location","Location Description","Batch No","Vendor Batch","Quantity","Unit","Created On","Date of Manufacture","Expiration Date","PO Number","PO Item","Remaining days","Stock Age","Sales Name","Sales Department","Packaging","Profit Center"];
-  const lines = [header.join(",")].concat(state.items.map((i) => [
-    i.materialNo, i.mCode, i.description, i.location, i.locationDesc, i.batchNo, i.vendorBatch,
+  const header = ["Bay","Location","Location Description","Material No","M code","English Description","Batch No","Vendor Batch","Quantity","Unit","Created On","Date of Manufacture","Expiration Date","PO Number","PO Item","Remaining days","Stock Age","Sales Name","Sales Department","Packaging","Profit Center"];
+  const rows = state.items.slice().sort((a, b) => (a.bay || "").localeCompare(b.bay || "") || (a.description || "").localeCompare(b.description || ""));
+  const lines = [header.join(",")].concat(rows.map((i) => [
+    i.bay, i.location, i.locationDesc, i.materialNo, i.mCode, i.description, i.batchNo, i.vendorBatch,
     i.qty, i.unit, i.createdOn, i.dateOfManufacture, i.expirationDate, i.poNumber, i.poItem,
     remainingDays(i), stockAge(i), i.salesName, i.salesDept, i.packaging, i.profitCenter
   ].map(csvCell).join(",")));
   download("warehouse-inventory.csv", lines.join("\n"), "text/csv");
+}
+function exportLocations() {
+  const header = ["Bay","Location","Location Description","Material No","M code","English Description","Batch No","Vendor Batch","Quantity","Unit","Expiration Date","Remaining days"];
+  const rows = state.items.slice().sort((a, b) => (a.bay || "").localeCompare(b.bay || "") || (a.location || "").localeCompare(b.location || ""));
+  const lines = [header.join(",")].concat(rows.map((i) => [
+    i.bay, i.location, i.locationDesc, i.materialNo, i.mCode, i.description, i.batchNo, i.vendorBatch,
+    i.qty, i.unit, i.expirationDate, remainingDays(i)
+  ].map(csvCell).join(",")));
+  download("warehouse-locations.csv", lines.join("\n"), "text/csv");
 }
 function csvCell(v) {
   const s = v == null ? "" : String(v);
