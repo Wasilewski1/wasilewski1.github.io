@@ -10,7 +10,7 @@
 :root{--navy:#0b1f3a;--navy-2:#132a4a;--gold:#f5c518;--paper:#f3efe6;--ink:#122033;--muted:#5b6b7c;--line:#d9d3c7;--in:#1a7f4b;--out:#c05612;--danger:#b42318;--ok:#1a7f4b}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:var(--paper);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,sans-serif}
-body{padding-bottom:88px}
+body{padding-bottom:96px}
 .top{background:linear-gradient(160deg,var(--navy),var(--navy-2));color:#fff;padding:16px 20px 18px}
 .top-inner{max-width:1280px;margin:0 auto;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .mark{background:var(--gold);color:var(--navy);font-weight:800;letter-spacing:.1em;font-size:11px;padding:4px 8px;border-radius:4px;display:inline-block;margin-bottom:8px}
@@ -22,7 +22,7 @@ body{padding-bottom:88px}
 .modes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;max-width:720px}
 .mode{border:0;border-radius:14px;padding:16px 10px;font-size:18px;font-weight:800;color:#fff;cursor:pointer;opacity:.42}
 .mode.in{background:var(--in)}.mode.out{background:var(--out)}.mode.on{opacity:1}
-#reader{width:100%;max-width:720px;min-height:180px;background:#0b1220;border-radius:16px;overflow:hidden}
+#reader{width:100%;max-width:720px;min-height:220px;background:#0b1220;border-radius:16px;overflow:hidden}
 .hint{color:var(--muted);font-size:13px;margin:8px 0 12px}
 .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;margin:10px 0}
 .card.tight{max-width:720px}
@@ -43,8 +43,8 @@ table{width:100%;border-collapse:collapse;font-size:12px}
 th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top;white-space:nowrap}
 th{background:var(--gold);color:#1a1400;font-size:11px;font-weight:800;position:sticky;top:0}
 .sheet-wrap{overflow:auto;max-height:calc(100vh - 230px);border:1px solid var(--line);border-radius:12px;background:#fff}
-.tabs{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding:6px 6px calc(8px + env(safe-area-inset-bottom))}
-.tabs button{background:transparent;color:var(--muted);font-size:11px;font-weight:750}
+.tabs{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding:8px 6px calc(12px + env(safe-area-inset-bottom));z-index:20}
+.tabs button{background:transparent;color:var(--muted);font-size:13px;font-weight:800;min-height:48px}
 .tabs button.on{color:var(--navy)}
 .qty{display:flex;align-items:center;gap:8px}.qty input{text-align:center;font-size:22px;font-weight:800}.qty button{width:46px;height:46px;font-size:22px}
 .toast{position:fixed;top:12px;left:12px;right:12px;max-width:1256px;margin:0 auto;background:var(--navy);color:#fff;padding:12px 14px;border-radius:12px;display:none;z-index:40;font-weight:700}
@@ -61,12 +61,12 @@ th{background:var(--gold);color:#1a1400;font-size:11px;font-weight:800;position:
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}.toolbar input{min-width:220px;flex:1}
 @media print{.top,.tabs,.no-print,.toast,.modal-bg{display:none!important}}
 @media(min-width:900px){.cards{display:none}}
-@media(max-width:899px){.sheet-wrap{display:none}}
+@media(max-width:899px){.sheet-wrap{display:none}.cards{display:block}}
 </style>
 </head>
 <body>
 <div class="toast" id="toast"></div>
-<header class="top"><div class="top-inner"><div><div class="mark">FENCHEM</div><h1>Warehouse Inventory</h1><p>Mount Laurel, Chino, and Grimes. Pick the warehouse before you upload.</p></div><div class="sync"><span class="dot ok" id="dot"></span><span id="synctxt">Ready on this device</span></div></div></header>
+<header class="top"><div class="top-inner"><div><div class="mark">FENCHEM</div><h1>Warehouse Inventory</h1><p>Mount Laurel, Chino, and Grimes. Same phone browser keeps the list.</p></div><div class="sync"><span class="dot ok" id="dot"></span><span id="synctxt">Ready on this device</span></div></div></header>
 <main class="wrap">
 <section class="page on" id="page-scan">
 <div class="modes"><button class="mode in on" id="btn-in" onclick="setMode('in')">SCAN IN</button><button class="mode out" id="btn-out" onclick="setMode('out')">SCAN OUT</button></div>
@@ -76,10 +76,11 @@ th{background:var(--gold);color:#1a1400;font-size:11px;font-weight:800;position:
 <button class="ghost" onclick="document.getElementById('photo').click()">Take photo of QR</button>
 </div>
 <input id="photo" type="file" accept="image/*" capture="environment" hidden onchange="scanPhoto(this.files[0]); this.value='';" />
-<p class="hint" id="cam-hint">On iPhone tap Start camera and Allow. If that fails, tap Take photo of QR.</p>
-<div class="card tight"><label>Or type Material No / Batch / M code</label><div class="row"><input id="manual" placeholder="e.g. 10001234 or batch" /><button onclick="lookup(document.getElementById('manual').value)">Find</button></div></div>
+<p class="hint" id="cam-hint">Tap Start camera, allow access, and fill the screen with the printed square.</p>
+<div class="card tight"><label>Or type Material No / Batch</label><div class="row"><input id="manual" placeholder="e.g. 10001234 or batch" /><button onclick="lookup(document.getElementById('manual').value)">Find</button></div></div>
 <div class="card tight" id="match">Scan a pallet label, or add materials below.</div>
-<div class="card tight"><button class="gold" style="width:100%" onclick="openForm()">+ Add new material and print pallet QR</button></div>
+<div class="card tight"><button class="gold" style="width:100%" onclick="show('items')">Open materials list</button></div>
+<div class="card tight"><button class="ghost" style="width:100%" onclick="openForm()">+ Add new material and print pallet QR</button></div>
 <div class="card tight"><label>These materials are at</label><select id="import-site"><option>Mount Laurel</option><option>Chino</option><option>Grimes</option></select><div style="height:10px"></div><button class="ghost" style="width:100%" onclick="document.getElementById('xls').click()">Upload Excel / CSV of existing stock</button></div>
 </section>
 <section class="page" id="page-items">
@@ -104,7 +105,7 @@ th{background:var(--gold);color:#1a1400;font-size:11px;font-weight:800;position:
 </section>
 <section class="page" id="page-more">
 <div class="card tight"><label>Your name</label><input id="operator" placeholder="e.g. Gabe" /><label>This device is at</label><select id="sitename"><option>Mount Laurel</option><option>Chino</option><option>Grimes</option></select><div style="height:10px"></div><button class="primary" onclick="saveSettings()">Save</button></div>
-<div class="card tight"><p class="muted" style="margin-bottom:10px">Used at Mount Laurel, Chino, and Grimes. Pick the warehouse before you upload a spreadsheet.</p><div class="row"><button class="gold" onclick="document.getElementById('xls2').click()">Upload Excel / CSV</button><button class="ghost" onclick="backup()">Download backup</button><button class="ghost" onclick="document.getElementById('restore').click()">Restore backup</button></div>
+<div class="card tight"><p class="muted" style="margin-bottom:10px">Phone and computer each keep their own copy. After you upload on the PC, download CSV and upload that file on the phone too.</p><div class="row"><button class="gold" onclick="document.getElementById('xls2').click()">Upload Excel / CSV</button><button class="ghost" onclick="backup()">Download backup</button><button class="ghost" onclick="document.getElementById('restore').click()">Restore backup</button></div>
 <input id="xls2" type="file" accept=".csv,.xlsx,.xls,text/csv" hidden onchange="importSpreadsheet(this.files[0]); this.value='';" />
 <input id="restore" type="file" accept="application/json" hidden onchange="restoreFile(this.files[0])" /></div>
 </section>
@@ -130,7 +131,8 @@ th{background:var(--gold);color:#1a1400;font-size:11px;font-weight:800;position:
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="js/store1.js?v=3"></script>
+<script src="js/store1b.js?v=1"></script>
 <script src="js/store2.js?v=3"></script>
-<script src="js/store2b.js?v=1"></script>
-<script src="js/cam.js?v=1"></script>
+<script src="js/store2b.js?v=2"></script>
+<script src="js/cam.js?v=2"></script>
 </body></html>
