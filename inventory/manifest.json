@@ -1,0 +1,9 @@
+{
+  "name": "Inventory Scanner",
+  "short_name": "Inventory",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "description": "QR scan-in / scan-out inventory tracker for PC and iPhone."
+}

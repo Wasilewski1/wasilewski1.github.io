@@ -1,2 +1,3 @@
-# wasilewski1.github.io
-meeting room
+# Wasilewski Pages
+
+Inventory scanner: https://wasilewski1.github.io/inventory/
