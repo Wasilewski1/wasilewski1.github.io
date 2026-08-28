@@ -187,9 +187,13 @@
 
     <section class="page" id="page-items">
       <div class="toolbar no-print">
-        <input id="search" placeholder="Search material, batch, location, PO…" oninput="drawItems()" />
+        <input id="search" placeholder="Search material, batch, bay, location, PO…" oninput="drawItems()" />
+        <select id="bay-filter" onchange="drawItems()" style="flex:0 0 160px;width:auto">
+          <option value="">All bays</option>
+        </select>
         <button class="gold" style="flex:0 0 auto" onclick="openForm()">+ Add material</button>
         <button class="ghost" style="flex:0 0 auto" onclick="exportCsv()">Download CSV</button>
+        <button class="ghost" style="flex:0 0 auto" onclick="exportLocations()">CSV: where it is</button>
       </div>
       <div class="sheet-wrap" id="sheet"></div>
       <div class="cards" id="items"></div>
@@ -199,6 +203,7 @@
       <div class="stats" id="stats"></div>
       <div class="row no-print" style="margin:12px 0">
         <button class="ghost" onclick="exportCsv()">Download Excel CSV</button>
+        <button class="ghost" onclick="exportLocations()">CSV: everything + bay</button>
         <button class="ghost" onclick="printExpiring()">Print expiring</button>
       </div>
       <div class="card">
@@ -255,10 +260,11 @@
       </div>
 
       <div class="card" style="margin:0 0 12px;box-shadow:none">
-        <h3>Warehouse</h3>
+        <h3>Where it sits</h3>
         <div class="grid2">
-          <div><label>Location</label><input id="f-location" placeholder="Bin / aisle" /></div>
-          <div><label>Location Description</label><input id="f-locationDesc" /></div>
+          <div><label>Bay <span class="req">*</span></label><input id="f-bay" placeholder="e.g. Bay 4, A-12, Dock 2" /></div>
+          <div><label>Location</label><input id="f-location" placeholder="Bin / rack / slot" /></div>
+          <div><label>Location Description</label><input id="f-locationDesc" placeholder="e.g. Front left, cold room" /></div>
           <div><label>Packaging</label><input id="f-packaging" placeholder="Drum, bag, IBC…" /></div>
           <div><label>Profit Center</label><input id="f-profitCenter" /></div>
         </div>
