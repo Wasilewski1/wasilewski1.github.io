@@ -1,10 +1,10 @@
 var CLOUD_NEW = "https://extendsclass.com/api/json-storage/bin";
 var CLOUD_GET = "https://extendsclass.com/api/json-storage/bin/";
 var POINTER = "https://ntfy.sh/fenchem-wasilewski-stock";
-var GH_STOCK = "stock.json";
 var cloudTimer = 0;
 var cloudBusy = false;
 var lastCloudErr = "";
+var lastPullAt = 0;
 function showCloudErr(msg) {
   lastCloudErr = msg || "";
   var el = document.getElementById("cloud-err");
@@ -21,63 +21,78 @@ function cloudPayload() {
 }
 function applyCloud(data) {
   if (!data || typeof data !== "object" || !Array.isArray(data.items)) return false;
+  if (!data.items.length && state.items && state.items.length) return false;
   state.settings = Object.assign({}, emptyState().settings, data.settings || state.settings || {});
   state.items = data.items.map(normalizeItem);
-  state.txns = data.txns || [];
+  state.txns = data.txns || state.txns || [];
   try {
     localStorage.setItem("scantrack.cache", JSON.stringify(state));
     localStorage.setItem("scantrack.cache.backup", JSON.stringify(state));
   } catch (e) {}
   return true;
 }
-async function latestCloudId() {
-  var cached = "";
-  try { cached = localStorage.getItem("scantrack.cloudId") || ""; } catch (e) {}
+async function pointerIds() {
+  var ids = [];
+  try {
+    var cached = localStorage.getItem("scantrack.cloudId");
+    if (cached) ids.push(cached);
+  } catch (e) {}
   try {
     var res = await fetch(POINTER + "/json?poll=1&since=all&t=" + Date.now(), { cache: "no-store" });
     if (!res.ok) throw new Error("pointer " + res.status);
     var txt = await res.text();
-    var lines = txt.trim().split("\n").filter(Boolean);
-    for (var i = lines.length - 1; i >= 0; i--) {
+    txt.trim().split("\n").forEach(function (line) {
+      if (!line) return;
       try {
-        var msg = JSON.parse(lines[i]);
-        if (msg && msg.message) return String(msg.message).trim();
+        var msg = JSON.parse(line);
+        if (msg && msg.message) ids.push(String(msg.message).trim());
       } catch (e) {}
-    }
+    });
   } catch (e) {
     showCloudErr(String(e.message || e));
   }
-  return cached;
+  var out = [];
+  var seen = {};
+  for (var i = ids.length - 1; i >= 0; i--) {
+    if (!ids[i] || seen[ids[i]]) continue;
+    seen[ids[i]] = 1;
+    out.push(ids[i]);
+    if (out.length >= 12) break;
+  }
+  return out;
+}
+async function fetchBin(id) {
+  var res = await fetch(CLOUD_GET + id + "?t=" + Date.now(), { cache: "no-store" });
+  if (!res.ok) return null;
+  return res.json();
 }
 async function pullCloud() {
   setSync(false, "Loading cloud...");
   try {
-    var id = await latestCloudId();
-    if (id) {
-      var res = await fetch(CLOUD_GET + id + "?t=" + Date.now(), { cache: "no-store" });
-      if (res.ok) {
-        var data = await res.json();
-        if (applyCloud(data)) {
-          try { localStorage.setItem("scantrack.cloudId", id); } catch (e) {}
-          setSync(true, "Saved in cloud");
-          showCloudErr("");
-          if (typeof paint === "function") paint();
-          return true;
+    var ids = await pointerIds();
+    var best = null;
+    var bestId = "";
+    for (var i = 0; i < ids.length; i++) {
+      try {
+        var data = await fetchBin(ids[i]);
+        var n = data && data.items ? data.items.length : 0;
+        if (n && (!best || n >= best.items.length)) {
+          best = data;
+          bestId = ids[i];
         }
-      }
+        if (best && best.items.length >= 1 && i >= 3 && n === 0) continue;
+      } catch (e) {}
     }
-    try {
-      var localCopy = await fetch(GH_STOCK + "?t=" + Date.now(), { cache: "no-store" });
-      if (localCopy.ok) {
-        var gh = await localCopy.json();
-        if (applyCloud(gh)) {
-          setSync(true, "Loaded warehouse copy");
-          if (typeof paint === "function") paint();
-          return true;
-        }
-      }
-    } catch (e) {}
-    if (restoreLocal()) setSync(true, state.items.length ? "Saved on this device" : "Ready on this device");
+    if (best && applyCloud(best)) {
+      try { localStorage.setItem("scantrack.cloudId", bestId); } catch (e) {}
+      lastPullAt = Date.now();
+      setSync(true, "Saved in cloud · " + best.items.length + " materials");
+      showCloudErr("");
+      if (typeof paint === "function") paint();
+      toast("Loaded " + best.items.length + " materials from cloud");
+      return true;
+    }
+    if (restoreLocal()) setSync(true, state.items.length ? ("On this device · " + state.items.length) : "Ready on this device");
     else setSync(true, "Ready on this device");
     if (typeof paint === "function") paint();
     return false;
@@ -91,6 +106,8 @@ async function pullCloud() {
 }
 async function pushCloud() {
   if (cloudBusy) return;
+  if (!state.items || !state.items.length) return;
+  if (Date.now() - lastPullAt < 1500) return;
   cloudBusy = true;
   try {
     var created = await fetch(CLOUD_NEW, { method: "POST", headers: { "Content-Type": "text/plain" }, body: cloudPayload() });
@@ -102,11 +119,11 @@ async function pushCloud() {
     var ping = await fetch(POINTER, { method: "POST", headers: { "Content-Type": "text/plain" }, body: id });
     if (!ping.ok) throw new Error("index blocked (" + ping.status + ")");
     try { localStorage.setItem("scantrack.cloudId", id); } catch (e) {}
-    setSync(true, "Saved in cloud");
+    setSync(true, "Saved in cloud · " + state.items.length + " materials");
     showCloudErr("");
   } catch (e) {
     showCloudErr(String(e.message || e));
-    setSync(true, "Saved on this device");
+    setSync(true, "Saved on this device · " + (state.items.length || 0));
   }
   cloudBusy = false;
 }
@@ -118,20 +135,21 @@ function clearAllLocal() {
   state = emptyState();
   if (typeof paint === "function") paint();
   setSync(true, "Cleared this device");
-  toast("This device is empty.");
+  toast("This device is empty. Tap Reload from cloud to get the warehouse list back.");
 }
 var _persist = persistLocal;
 persistLocal = function () {
   _persist();
+  if (!state.items || !state.items.length) return;
   clearTimeout(cloudTimer);
-  cloudTimer = setTimeout(pushCloud, 800);
+  cloudTimer = setTimeout(pushCloud, 1000);
 };
 saveCloud = persistLocal;
 loadCloud = pullCloud;
 document.addEventListener("visibilitychange", function () {
   if (document.visibilityState === "visible") pullCloud();
 });
-setTimeout(function () { try { pullCloud(); } catch (e) {} }, 500);
+setTimeout(function () { try { pullCloud(); } catch (e) {} }, 400);
 setTimeout(function () {
   var s = document.createElement("script");
   s.src = "js/clear.js?v=1";
