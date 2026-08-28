@@ -1,318 +1,137 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="Fenchem Inventory" />
-  <meta name="theme-color" content="#0b1f3a" />
-  <title>Fenchem Inventory</title>
-  <link rel="manifest" href="manifest.json" />
-  <style>
-    :root {
-      --navy: #0b1f3a;
-      --navy-2: #132a4a;
-      --gold: #f5c518;
-      --gold-2: #e8b800;
-      --paper: #f3efe6;
-      --card: #fff;
-      --ink: #122033;
-      --muted: #5b6b7c;
-      --line: #d9d3c7;
-      --in: #1a7f4b;
-      --out: #c05612;
-      --danger: #b42318;
-      --ok: #1a7f4b;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { background: var(--paper); color: var(--ink); font-family: "Segoe UI", system-ui, -apple-system, sans-serif; }
-    body { padding-bottom: 88px; }
-    .top {
-      background: linear-gradient(160deg, var(--navy) 0%, var(--navy-2) 100%);
-      color: #fff; padding: 16px 20px 18px;
-    }
-    .top-inner { max-width: 1280px; margin: 0 auto; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-    .mark {
-      background: var(--gold); color: var(--navy); font-weight: 800; letter-spacing: .1em;
-      font-size: 11px; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-bottom: 8px;
-    }
-    .top h1 { font-size: 22px; font-weight: 750; letter-spacing: -.02em; }
-    .top p { color: #c9d4e3; font-size: 13px; margin-top: 4px; }
-    .sync {
-      background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18);
-      border-radius: 999px; padding: 6px 10px; font-size: 11px; color: #d7e2ef; white-space: nowrap;
-    }
-    .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 6px; background: #f5c518; }
-    .dot.ok { background: #3ddc84; }
-    .wrap { max-width: 1280px; margin: 0 auto; padding: 16px 16px 24px; }
-    .page { display: none; }
-    .page.on { display: block; }
-    .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; max-width: 720px; }
-    .mode {
-      border: 0; border-radius: 14px; padding: 16px 10px; font-size: 18px; font-weight: 800;
-      color: #fff; cursor: pointer; opacity: .42;
-    }
-    .mode.in { background: var(--in); }
-    .mode.out { background: var(--out); }
-    .mode.on { opacity: 1; box-shadow: 0 8px 20px rgba(0,0,0,.12); }
-    #reader { width: 100%; max-width: 720px; min-height: 250px; background: #0b1220; border-radius: 16px; overflow: hidden; }
-    .hint { color: var(--muted); font-size: 13px; margin: 8px 0 12px; }
-    .card {
-      background: var(--card); border: 1px solid var(--line); border-radius: 16px;
-      padding: 16px; margin: 10px 0; box-shadow: 0 1px 0 rgba(11,31,58,.04);
-    }
-    .card.tight { max-width: 720px; }
-    .card h3 { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
-    label { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 4px; font-weight: 700; }
-    input, select, textarea {
-      width: 100%; background: #fbfaf7; color: var(--ink); border: 1px solid var(--line);
-      border-radius: 10px; padding: 11px 12px; font-size: 15px;
-    }
-    input:focus, select:focus, textarea:focus { outline: 2px solid #f5c51855; border-color: var(--gold-2); }
-    button {
-      border: 0; border-radius: 10px; padding: 11px 14px; font-weight: 750; cursor: pointer;
-      background: var(--navy); color: #fff; font-size: 14px;
-    }
-    .primary { background: var(--navy); width: 100%; padding: 14px; font-size: 16px; }
-    .gold { background: var(--gold); color: var(--navy); }
-    .inbtn { background: var(--in); width: 100%; padding: 14px; font-size: 16px; color: #fff; }
-    .outbtn { background: var(--out); width: 100%; padding: 14px; font-size: 16px; color: #fff; }
-    .ghost { background: #fff; color: var(--navy); border: 1px solid var(--line); }
-    .row { display: flex; gap: 8px; flex-wrap: wrap; }
-    .row > * { flex: 1; min-width: 120px; }
-    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-    @media (max-width: 720px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
-    table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    th, td { text-align: left; padding: 8px 8px; border-bottom: 1px solid var(--line); vertical-align: top; white-space: nowrap; }
-    th {
-      color: #1a1400; font-size: 11px; font-weight: 800; background: var(--gold);
-      position: sticky; top: 0; z-index: 2; border-bottom: 1px solid #c9a400;
-    }
-    .sheet-wrap {
-      overflow: auto; max-height: calc(100vh - 230px); border: 1px solid var(--line);
-      border-radius: 12px; background: #fff;
-    }
-    .sheet-wrap td { font-size: 12px; }
-    .sheet-wrap tr:hover td { background: #fff8dd; }
-    .tabs {
-      position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid var(--line);
-      display: grid; grid-template-columns: repeat(4, 1fr);
-      padding: 6px 6px calc(8px + env(safe-area-inset-bottom));
-    }
-    .tabs button { background: transparent; color: var(--muted); font-size: 11px; font-weight: 750; padding: 8px 4px; }
-    .tabs button.on { color: var(--navy); }
-    .qty { display: flex; align-items: center; gap: 8px; }
-    .qty input { text-align: center; font-size: 22px; font-weight: 800; }
-    .qty button { width: 46px; height: 46px; font-size: 22px; }
-    .toast {
-      position: fixed; top: 12px; left: 12px; right: 12px; max-width: 1256px; margin: 0 auto;
-      background: var(--navy); color: #fff; padding: 12px 14px; border-radius: 12px;
-      display: none; z-index: 40; font-weight: 700;
-    }
-    .toast.on { display: block; }
-    .toast.err { background: var(--danger); }
-    .big { font-size: 26px; font-weight: 800; }
-    .muted { color: var(--muted); }
-    .item {
-      background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-bottom: 10px;
-    }
-    .badge { display: inline-block; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; }
-    .badge-ok { background: #e5f6ec; color: var(--ok); }
-    .badge-low { background: #fde7e5; color: var(--danger); }
-    .badge-exp { background: #fff3cc; color: #7a5b00; }
-    .actions button { margin: 6px 6px 0 0; }
-    .modal-bg {
-      position: fixed; inset: 0; background: rgba(11,31,58,.55); display: none; z-index: 30;
-      padding: 12px; overflow: auto;
-    }
-    .modal-bg.open { display: block; }
-    .modal {
-      background: #fff; border-radius: 18px; max-width: 900px; margin: 12px auto 40px; padding: 18px;
-    }
-    .modal h2 { font-size: 20px; margin-bottom: 4px; }
-    .req { color: var(--danger); }
-    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .stat { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
-    .stat b { display: block; font-size: 22px; }
-    .check { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 14px; font-weight: 700; }
-    .check input { width: auto; }
-    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
-    .toolbar input { min-width: 220px; flex: 1; }
-    @media print {
-      .top, .tabs, .no-print, .toast, .modal-bg { display: none !important; }
-      body { padding: 0; background: #fff; }
-    }
-    @media (min-width: 900px) { .cards { display: none; } }
-    @media (max-width: 899px) { .sheet-wrap { display: none; } }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#0b1f3a" />
+<title>Fenchem Inventory</title>
+<style>
+:root{--navy:#0b1f3a;--navy-2:#132a4a;--gold:#f5c518;--paper:#f3efe6;--card:#fff;--ink:#122033;--muted:#5b6b7c;--line:#d9d3c7;--in:#1a7f4b;--out:#c05612;--danger:#b42318;--ok:#1a7f4b}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--paper);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,sans-serif}
+body{padding-bottom:88px}
+.top{background:linear-gradient(160deg,var(--navy),var(--navy-2));color:#fff;padding:16px 20px 18px}
+.top-inner{max-width:1280px;margin:0 auto;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.mark{background:var(--gold);color:var(--navy);font-weight:800;letter-spacing:.1em;font-size:11px;padding:4px 8px;border-radius:4px;display:inline-block;margin-bottom:8px}
+.top h1{font-size:22px}
+.top p{color:#c9d4e3;font-size:13px;margin-top:4px}
+.sync{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:6px 10px;font-size:11px;color:#d7e2ef;white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:6px;background:#f5c518}
+.dot.ok{background:#3ddc84}
+.wrap{max-width:1280px;margin:0 auto;padding:16px}
+.page{display:none}.page.on{display:block}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;max-width:720px}
+.mode{border:0;border-radius:14px;padding:16px 10px;font-size:18px;font-weight:800;color:#fff;cursor:pointer;opacity:.42}
+.mode.in{background:var(--in)}.mode.out{background:var(--out)}.mode.on{opacity:1}
+#reader{width:100%;max-width:720px;min-height:220px;background:#0b1220;border-radius:16px}
+.hint{color:var(--muted);font-size:13px;margin:8px 0 12px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;margin:10px 0}
+.card.tight{max-width:720px}
+.card h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+label{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px;font-weight:700}
+input,select{width:100%;background:#fbfaf7;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:15px}
+button{border:0;border-radius:10px;padding:11px 14px;font-weight:750;cursor:pointer;background:var(--navy);color:#fff;font-size:14px}
+.gold{background:var(--gold);color:var(--navy)}
+.inbtn{background:var(--in);width:100%;padding:14px;font-size:16px}
+.outbtn{background:var(--out);width:100%;padding:14px;font-size:16px}
+.ghost{background:#fff;color:var(--navy);border:1px solid var(--line)}
+.primary{width:100%;padding:14px;font-size:16px}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1;min-width:120px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+@media(max-width:720px){.grid2,.grid3{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top;white-space:nowrap}
+th{background:var(--gold);color:#1a1400;font-size:11px;font-weight:800;position:sticky;top:0}
+.sheet-wrap{overflow:auto;max-height:calc(100vh - 230px);border:1px solid var(--line);border-radius:12px;background:#fff}
+.tabs{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding:6px 6px calc(8px + env(safe-area-inset-bottom))}
+.tabs button{background:transparent;color:var(--muted);font-size:11px;font-weight:750}
+.tabs button.on{color:var(--navy)}
+.qty{display:flex;align-items:center;gap:8px}.qty input{text-align:center;font-size:22px;font-weight:800}.qty button{width:46px;height:46px;font-size:22px}
+.toast{position:fixed;top:12px;left:12px;right:12px;max-width:1256px;margin:0 auto;background:var(--navy);color:#fff;padding:12px 14px;border-radius:12px;display:none;z-index:40;font-weight:700}
+.toast.on{display:block}.toast.err{background:var(--danger)}
+.big{font-size:26px;font-weight:800}.muted{color:var(--muted)}
+.item{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px}
+.badge{display:inline-block;font-size:11px;font-weight:800;padding:3px 8px;border-radius:999px}
+.badge-ok{background:#e5f6ec;color:var(--ok)}.badge-low{background:#fde7e5;color:var(--danger)}.badge-exp{background:#fff3cc;color:#7a5b00}
+.actions button{margin:6px 6px 0 0}
+.modal-bg{position:fixed;inset:0;background:rgba(11,31,58,.55);display:none;z-index:30;padding:12px;overflow:auto}
+.modal-bg.open{display:block}
+.modal{background:#fff;border-radius:18px;max-width:900px;margin:12px auto 40px;padding:18px}
+.req{color:var(--danger)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px}.stat b{display:block;font-size:22px}
+.check{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:14px;font-weight:700}.check input{width:auto}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}.toolbar input{min-width:220px;flex:1}
+@media print{.top,.tabs,.no-print,.toast,.modal-bg{display:none!important}body{padding:0;background:#fff}}
+@media(min-width:900px){.cards{display:none}}
+@media(max-width:899px){.sheet-wrap{display:none}}
+</style>
 </head>
 <body>
-  <div class="toast" id="toast"></div>
-  <header class="top">
-    <div class="top-inner">
-      <div>
-        <div class="mark">FENCHEM</div>
-        <h1>Warehouse Inventory</h1>
-        <p>Scan pallets in and out. Same list on phone and computer.</p>
-      </div>
-      <div class="sync"><span class="dot" id="dot"></span><span id="synctxt">Connecting…</span></div>
-    </div>
-  </header>
-  <main class="wrap">
-    <section class="page on" id="page-scan">
-      <div class="modes">
-        <button class="mode in on" id="btn-in" onclick="setMode('in')">SCAN IN</button>
-        <button class="mode out" id="btn-out" onclick="setMode('out')">SCAN OUT</button>
-      </div>
-      <div id="reader"></div>
-      <p class="hint" id="cam-hint">Allow the camera, then point it at the pallet QR. On a PC you can skip the camera and tap Add material.</p>
-      <div class="card tight">
-        <label>Or type Material No / Batch / M code</label>
-        <div class="row">
-          <input id="manual" placeholder="e.g. 10001234 or batch" />
-          <button onclick="lookup(document.getElementById('manual').value)">Find</button>
-        </div>
-      </div>
-      <div class="card tight" id="match">Scan a pallet label to check material in or out.</div>
-      <div class="card tight">
-        <button class="gold" style="width:100%" onclick="openForm()">+ Add new material & print pallet QR</button>
-      </div>
-    </section>
-    <section class="page" id="page-items">
-      <div class="toolbar no-print">
-        <input id="search" placeholder="Search material, batch, bay, location, PO…" oninput="drawItems()" />
-        <select id="bay-filter" onchange="drawItems()" style="flex:0 0 160px;width:auto">
-          <option value="">All bays</option>
-        </select>
-        <button class="gold" style="flex:0 0 auto" onclick="openForm()">+ Add material</button>
-        <button class="ghost" style="flex:0 0 auto" onclick="exportCsv()">Download CSV</button>
-        <button class="ghost" style="flex:0 0 auto" onclick="exportLocations()">CSV: where it is</button>
-      </div>
-      <div class="sheet-wrap" id="sheet"></div>
-      <div class="cards" id="items"></div>
-    </section>
-    <section class="page" id="page-report">
-      <div class="stats" id="stats"></div>
-      <div class="row no-print" style="margin:12px 0">
-        <button class="ghost" onclick="exportCsv()">Download Excel CSV</button>
-        <button class="ghost" onclick="exportLocations()">CSV: everything + bay</button>
-        <button class="ghost" onclick="printExpiring()">Print expiring</button>
-      </div>
-      <div class="card">
-        <h3>Expiring / expired</h3>
-        <div id="r-exp"></div>
-      </div>
-      <div class="card">
-        <h3>Recent scans</h3>
-        <div id="r-hist"></div>
-      </div>
-    </section>
-    <section class="page" id="page-more">
-      <div class="card tight">
-        <label>Your name (saved on every scan)</label>
-        <input id="operator" placeholder="e.g. Gabe" />
-        <label>Site name</label>
-        <input id="sitename" placeholder="e.g. Mount Laurel warehouse" />
-        <div style="height:10px"></div>
-        <button class="primary" onclick="saveSettings()">Save</button>
-      </div>
-      <div class="card tight">
-        <p class="muted" style="margin-bottom:10px">On iPhone: Share → Add to Home Screen. Works on office Wi-Fi.</p>
-        <div class="row">
-          <button class="ghost" onclick="backup()">Download backup</button>
-          <button class="ghost" onclick="document.getElementById('restore').click()">Restore backup</button>
-        </div>
-        <input id="restore" type="file" accept="application/json" hidden onchange="restoreFile(this.files[0])" />
-      </div>
-    </section>
-  </main>
-  <nav class="tabs">
-    <button class="on" data-p="scan" onclick="show('scan', this)">Scan</button>
-    <button data-p="items" onclick="show('items', this)">Materials</button>
-    <button data-p="report" onclick="show('report', this)">Report</button>
-    <button data-p="more" onclick="show('more', this)">More</button>
-  </nav>
-  <div class="modal-bg" id="modal" onclick="if(event.target===this)closeForm()">
-    <div class="modal">
-      <h2 id="form-title">Add material / pallet</h2>
-      <p class="muted" style="margin-bottom:12px">Same fields as the warehouse spreadsheet. <span class="req">*</span> required.</p>
-      <input type="hidden" id="f-id" />
-      <div class="card" style="margin:0 0 12px;box-shadow:none">
-        <h3>Material</h3>
-        <div class="grid2">
-          <div><label>Material No <span class="req">*</span></label><input id="f-materialNo" /></div>
-          <div><label>M code</label><input id="f-mCode" /></div>
-        </div>
-        <label>English Description <span class="req">*</span></label>
-        <input id="f-description" />
-      </div>
-      <div class="card" style="margin:0 0 12px;box-shadow:none">
-        <h3>Where it sits</h3>
-        <div class="grid2">
-          <div><label>Bay <span class="req">*</span></label><input id="f-bay" placeholder="e.g. Bay 4, A-12, Dock 2" /></div>
-          <div><label>Location</label><input id="f-location" placeholder="Bin / rack / slot" /></div>
-          <div><label>Location Description</label><input id="f-locationDesc" /></div>
-          <div><label>Packaging</label><input id="f-packaging" /></div>
-          <div><label>Profit Center</label><input id="f-profitCenter" /></div>
-        </div>
-      </div>
-      <div class="card" style="margin:0 0 12px;box-shadow:none">
-        <h3>Batch / pallet</h3>
-        <div class="grid2">
-          <div><label>Batch No <span class="req">*</span></label><input id="f-batchNo" /></div>
-          <div><label>Vendor Batch</label><input id="f-vendorBatch" /></div>
-          <div><label>Quantity <span class="req">*</span></label><input id="f-qty" type="number" step="0.01" /></div>
-          <div>
-            <label>Unit</label>
-            <select id="f-unit">
-              <option>KG</option><option>LB</option><option>MT</option>
-              <option>DRUM</option><option>BAG</option><option>IBC</option>
-              <option>PALLET</option><option>EA</option>
-            </select>
-          </div>
-        </div>
-      </div>
-      <div class="card" style="margin:0 0 12px;box-shadow:none">
-        <h3>Dates</h3>
-        <div class="grid3">
-          <div><label>Created On</label><input id="f-createdOn" type="date" /></div>
-          <div><label>Date of Manufacture</label><input id="f-dom" type="date" /></div>
-          <div><label>Expiration Date</label><input id="f-exp" type="date" /></div>
-        </div>
-      </div>
-      <div class="card" style="margin:0 0 12px;box-shadow:none">
-        <h3>PO / sales</h3>
-        <div class="grid2">
-          <div><label>PO Number</label><input id="f-poNumber" /></div>
-          <div><label>PO Item</label><input id="f-poItem" /></div>
-          <div><label>Sales Name</label><input id="f-salesName" /></div>
-          <div><label>Sales Department</label><input id="f-salesDept" /></div>
-        </div>
-      </div>
-      <label class="check"><input type="checkbox" id="f-print" checked /> Print pallet QR after save</label>
-      <div class="row" style="margin-top:12px">
-        <button class="ghost" onclick="closeForm()">Cancel</button>
-        <button class="gold" onclick="saveForm()">Save material</button>
-      </div>
-    </div>
-  </div>
-  <script src="js/app.js"></script>
-  <script>
-    (function () {
-      function add(src) {
-        var s = document.createElement("script");
-        s.src = src;
-        s.async = true;
-        document.body.appendChild(s);
-      }
-      add("https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js");
-      add("https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js");
-      setTimeout(function () {
-        var el = document.getElementById("synctxt");
-        if (el && /Connecting/.test(el.textContent)) el.textContent = "Ready";
-      }, 2500);
-    })();
-  </script>
-</body>
-</html>
+<div class="toast" id="toast"></div>
+<header class="top"><div class="top-inner"><div><div class="mark">FENCHEM</div><h1>Warehouse Inventory</h1><p>Scan pallets in and out. Same list on phone and computer.</p></div><div class="sync"><span class="dot" id="dot"></span><span id="synctxt">Starting...</span></div></div></header>
+<main class="wrap">
+<section class="page on" id="page-scan">
+<div class="modes"><button class="mode in on" id="btn-in" onclick="setMode('in')">SCAN IN</button><button class="mode out" id="btn-out" onclick="setMode('out')">SCAN OUT</button></div>
+<div id="reader"></div>
+<p class="hint" id="cam-hint">On a phone, allow the camera. On a PC, skip camera and add or upload materials.</p>
+<div class="card tight"><label>Or type Material No / Batch / M code</label><div class="row"><input id="manual" placeholder="e.g. 10001234 or batch" /><button onclick="lookup(document.getElementById('manual').value)">Find</button></div></div>
+<div class="card tight" id="match">Scan a pallet label, or add materials below.</div>
+<div class="card tight"><button class="gold" style="width:100%" onclick="openForm()">+ Add new material and print pallet QR</button></div>
+<div class="card tight"><button class="ghost" style="width:100%" onclick="document.getElementById('xls').click()">Upload Excel / CSV of existing stock</button></div>
+</section>
+<section class="page" id="page-items">
+<div class="toolbar no-print">
+<input id="search" placeholder="Search material, batch, bay, location, PO..." oninput="drawItems()" />
+<select id="bay-filter" onchange="drawItems()" style="flex:0 0 160px;width:auto"><option value="">All bays</option></select>
+<button class="gold" style="flex:0 0 auto" onclick="openForm()">+ Add material</button>
+<button class="ghost" style="flex:0 0 auto" onclick="document.getElementById('xls').click()">Upload Excel / CSV</button>
+<button class="ghost" style="flex:0 0 auto" onclick="exportCsv()">Download CSV</button>
+</div>
+<input id="xls" type="file" accept=".csv,.xlsx,.xls,text/csv" hidden onchange="importSpreadsheet(this.files[0]); this.value='';" />
+<div class="sheet-wrap" id="sheet"></div>
+<div class="cards" id="items"></div>
+</section>
+<section class="page" id="page-report">
+<div class="stats" id="stats"></div>
+<div class="row no-print" style="margin:12px 0"><button class="ghost" onclick="exportCsv()">Download Excel CSV</button><button class="ghost" onclick="printExpiring()">Print expiring</button></div>
+<div class="card"><h3>Expiring / expired</h3><div id="r-exp"></div></div>
+<div class="card"><h3>Recent scans</h3><div id="r-hist"></div></div>
+</section>
+<section class="page" id="page-more">
+<div class="card tight"><label>Your name</label><input id="operator" placeholder="e.g. Gabe" /><label>Site name</label><input id="sitename" placeholder="Mount Laurel warehouse" /><div style="height:10px"></div><button class="primary" onclick="saveSettings()">Save</button></div>
+<div class="card tight"><p class="muted" style="margin-bottom:10px">Upload the warehouse spreadsheet (first row = column names). CSV always works: Excel then File then Save As then CSV.</p><div class="row"><button class="gold" onclick="document.getElementById('xls2').click()">Upload Excel / CSV</button><button class="ghost" onclick="backup()">Download backup</button><button class="ghost" onclick="document.getElementById('restore').click()">Restore backup</button></div>
+<input id="xls2" type="file" accept=".csv,.xlsx,.xls,text/csv" hidden onchange="importSpreadsheet(this.files[0]); this.value='';" />
+<input id="restore" type="file" accept="application/json" hidden onchange="restoreFile(this.files[0])" /></div>
+</section>
+</main>
+<nav class="tabs">
+<button class="on" data-p="scan" onclick="show('scan', this)">Scan</button>
+<button data-p="items" onclick="show('items', this)">Materials</button>
+<button data-p="report" onclick="show('report', this)">Report</button>
+<button data-p="more" onclick="show('more', this)">More</button>
+</nav>
+<div class="modal-bg" id="modal" onclick="if(event.target===this)closeForm()"><div class="modal">
+<h2 id="form-title">Add material / pallet</h2>
+<p class="muted" style="margin-bottom:12px">Same fields as the warehouse spreadsheet. <span class="req">*</span> required.</p>
+<input type="hidden" id="f-id" />
+<div class="card" style="margin:0 0 12px;box-shadow:none"><h3>Material</h3><div class="grid2"><div><label>Material No <span class="req">*</span></label><input id="f-materialNo" /></div><div><label>M code</label><input id="f-mCode" /></div></div><label>English Description <span class="req">*</span></label><input id="f-description" /></div>
+<div class="card" style="margin:0 0 12px;box-shadow:none"><h3>Where it sits</h3><div class="grid2"><div><label>Bay <span class="req">*</span></label><input id="f-bay" placeholder="e.g. Bay 4" /></div><div><label>Location</label><input id="f-location" placeholder="Bin / rack" /></div><div><label>Location Description</label><input id="f-locationDesc" /></div><div><label>Packaging</label><input id="f-packaging" /></div><div><label>Profit Center</label><input id="f-profitCenter" /></div></div></div>
+<div class="card" style="margin:0 0 12px;box-shadow:none"><h3>Batch / pallet</h3><div class="grid2"><div><label>Batch No <span class="req">*</span></label><input id="f-batchNo" /></div><div><label>Vendor Batch</label><input id="f-vendorBatch" /></div><div><label>Quantity <span class="req">*</span></label><input id="f-qty" type="number" step="0.01" /></div><div><label>Unit</label><select id="f-unit"><option>KG</option><option>LB</option><option>MT</option><option>DRUM</option><option>BAG</option><option>IBC</option><option>PALLET</option><option>EA</option></select></div></div></div>
+<div class="card" style="margin:0 0 12px;box-shadow:none"><h3>Dates</h3><div class="grid3"><div><label>Created On</label><input id="f-createdOn" type="date" /></div><div><label>Date of Manufacture</label><input id="f-dom" type="date" /></div><div><label>Expiration Date</label><input id="f-exp" type="date" /></div></div></div>
+<div class="card" style="margin:0 0 12px;box-shadow:none"><h3>PO / sales</h3><div class="grid2"><div><label>PO Number</label><input id="f-poNumber" /></div><div><label>PO Item</label><input id="f-poItem" /></div><div><label>Sales Name</label><input id="f-salesName" /></div><div><label>Sales Department</label><input id="f-salesDept" /></div></div></div>
+<label class="check"><input type="checkbox" id="f-print" checked /> Print pallet QR after save</label>
+<div class="row" style="margin-top:12px"><button class="ghost" onclick="closeForm()">Cancel</button><button class="gold" onclick="saveForm()">Save material</button></div>
+</div></div>
+<script src="js/app.js?v=5"></script>
+<script>
+(function(){
+  function add(src){var s=document.createElement("script");s.src=src;s.async=true;document.body.appendChild(s);}
+  add("https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js");
+  add("https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js");
+  add("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js");
+})();
+</script>
+</body></html>
