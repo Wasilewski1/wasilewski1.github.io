@@ -5,6 +5,7 @@ function openForm(prefill) {
   document.getElementById("f-qty").value = "";
   document.getElementById("f-unit").value = "KG";
   document.getElementById("f-createdOn").value = today();
+  if (document.getElementById("f-site")) document.getElementById("f-site").value = currentSite();
   if (prefill && typeof prefill === "string") document.getElementById("f-materialNo").value = prefill;
 }
 function editForm(id) {
@@ -15,6 +16,7 @@ function editForm(id) {
   document.getElementById("f-materialNo").value = i.materialNo;
   document.getElementById("f-mCode").value = i.mCode;
   document.getElementById("f-description").value = i.description;
+  if (document.getElementById("f-site")) document.getElementById("f-site").value = i.site || currentSite();
   document.getElementById("f-bay").value = i.bay || "";
   document.getElementById("f-location").value = i.location;
   document.getElementById("f-locationDesc").value = i.locationDesc;
@@ -37,7 +39,7 @@ function val(id) { return document.getElementById(id).value.trim(); }
 function saveForm() {
   var materialNo = val("f-materialNo"); var description = val("f-description"); var batchNo = val("f-batchNo"); var bay = val("f-bay"); var qty = Number(document.getElementById("f-qty").value);
   if (!materialNo || !description || !batchNo || !bay || !(qty >= 0)) { toast("Need Material No, Description, Batch No, Bay, and Quantity.", true); return; }
-  var rec = { id: val("f-id") || uid(), materialNo: materialNo, mCode: val("f-mCode"), description: description, bay: bay, location: val("f-location"), locationDesc: val("f-locationDesc"), batchNo: batchNo, vendorBatch: val("f-vendorBatch"), qty: qty, unit: document.getElementById("f-unit").value, createdOn: val("f-createdOn") || today(), dateOfManufacture: val("f-dom"), expirationDate: val("f-exp"), poNumber: val("f-poNumber"), poItem: val("f-poItem"), salesName: val("f-salesName"), salesDept: val("f-salesDept"), packaging: val("f-packaging"), profitCenter: val("f-profitCenter") };
+  var rec = { id: val("f-id") || uid(), site: val("f-site") || currentSite(), materialNo: materialNo, mCode: val("f-mCode"), description: description, bay: bay, location: val("f-location"), locationDesc: val("f-locationDesc"), batchNo: batchNo, vendorBatch: val("f-vendorBatch"), qty: qty, unit: document.getElementById("f-unit").value, createdOn: val("f-createdOn") || today(), dateOfManufacture: val("f-dom"), expirationDate: val("f-exp"), poNumber: val("f-poNumber"), poItem: val("f-poItem"), salesName: val("f-salesName"), salesDept: val("f-salesDept"), packaging: val("f-packaging"), profitCenter: val("f-profitCenter") };
   var idx = state.items.findIndex(function (x) { return x.id === rec.id; });
   if (idx >= 0) state.items[idx] = rec; else state.items.push(rec);
   var wantPrint = document.getElementById("f-print") ? document.getElementById("f-print").checked : true;
@@ -46,6 +48,7 @@ function saveForm() {
 }
 function filteredItems() {
   var q = ((document.getElementById("search") || {}).value || "").toLowerCase();
+  var site = ((document.getElementById("site-filter") || {}).value || "");
   var bay = ((document.getElementById("bay-filter") || {}).value || "").toLowerCase();
   var sel = document.getElementById("bay-filter");
   if (sel) {
@@ -55,11 +58,12 @@ function filteredItems() {
     if (current && bays.indexOf(current) >= 0) sel.value = current;
   }
   return state.items.filter(function (i) {
-    var hay = [i.materialNo, i.mCode, i.description, i.bay, i.location, i.batchNo, i.vendorBatch, i.poNumber].join(" ").toLowerCase();
+    var hay = [i.site, i.materialNo, i.mCode, i.description, i.bay, i.location, i.batchNo, i.vendorBatch, i.poNumber].join(" ").toLowerCase();
     if (q && hay.indexOf(q) < 0) return false;
+    if (site && String(i.site || "") !== site) return false;
     if (bay && String(i.bay || "").toLowerCase() !== bay) return false;
     return true;
-  }).sort(function (a, b) { return (a.bay || "").localeCompare(b.bay || "") || (a.description || "").localeCompare(b.description || ""); });
+  }).sort(function (a, b) { return (a.site || "").localeCompare(b.site || "") || (a.bay || "").localeCompare(b.bay || "") || (a.description || "").localeCompare(b.description || ""); });
 }
 function drawItems() {
   var rows = filteredItems();
@@ -70,14 +74,14 @@ function drawItems() {
     if (el) el.innerHTML = empty; if (sheet) sheet.innerHTML = empty; return;
   }
   if (sheet) {
-    var cols = ["Bay","Location","Material No","M code","English Description","Batch No","Vendor Batch","Quantity","Unit","Expiration Date","PO Number","Remaining days","Packaging",""];
+    var cols = ["Site","Bay","Location","Material No","M code","English Description","Batch No","Vendor Batch","Quantity","Unit","Expiration Date","PO Number","Remaining days","Packaging",""];
     sheet.innerHTML = "<table><thead><tr>" + cols.map(function (c) { return "<th>" + c + "</th>"; }).join("") + "</tr></thead><tbody>" + rows.map(function (i) {
-      return "<tr><td>" + escapeHtml(i.bay) + "</td><td>" + escapeHtml(i.location) + "</td><td>" + escapeHtml(i.materialNo) + "</td><td>" + escapeHtml(i.mCode) + "</td><td>" + escapeHtml(i.description) + "</td><td>" + escapeHtml(i.batchNo) + "</td><td>" + escapeHtml(i.vendorBatch) + "</td><td>" + i.qty + "</td><td>" + escapeHtml(i.unit) + "</td><td>" + escapeHtml(i.expirationDate) + "</td><td>" + escapeHtml(i.poNumber) + "</td><td>" + remainingDays(i) + "</td><td>" + escapeHtml(i.packaging) + "</td><td><button onclick='printLabel(\"" + i.id + "\")'>QR</button> <button class='ghost' onclick='editForm(\"" + i.id + "\")'>Edit</button></td></tr>";
+      return "<tr><td>" + escapeHtml(i.site) + "</td><td>" + escapeHtml(i.bay) + "</td><td>" + escapeHtml(i.location) + "</td><td>" + escapeHtml(i.materialNo) + "</td><td>" + escapeHtml(i.mCode) + "</td><td>" + escapeHtml(i.description) + "</td><td>" + escapeHtml(i.batchNo) + "</td><td>" + escapeHtml(i.vendorBatch) + "</td><td>" + i.qty + "</td><td>" + escapeHtml(i.unit) + "</td><td>" + escapeHtml(i.expirationDate) + "</td><td>" + escapeHtml(i.poNumber) + "</td><td>" + remainingDays(i) + "</td><td>" + escapeHtml(i.packaging) + "</td><td><button onclick='printLabel(\"" + i.id + "\")'>QR</button> <button class='ghost' onclick='editForm(\"" + i.id + "\")'>Edit</button></td></tr>";
     }).join("") + "</tbody></table>";
   }
   if (!el) return;
   el.innerHTML = rows.map(function (i) {
-    return "<div class='item'><b>" + escapeHtml(i.description) + "</b><div class='muted'>Bay <b>" + escapeHtml(i.bay || "-") + "</b> | Mat " + escapeHtml(i.materialNo) + " | Batch " + escapeHtml(i.batchNo) + "</div><div class='big'>" + i.qty + " " + escapeHtml(i.unit) + "</div><div class='actions'><button onclick='printLabel(\"" + i.id + "\")'>Print pallet QR</button><button class='ghost' onclick='editForm(\"" + i.id + "\")'>Edit</button></div></div>";
+    return "<div class='item'><b>" + escapeHtml(i.description) + "</b><div class='muted'>Site <b>" + escapeHtml(i.site || "-") + "</b> | Bay <b>" + escapeHtml(i.bay || "-") + "</b> | Mat " + escapeHtml(i.materialNo) + " | Batch " + escapeHtml(i.batchNo) + "</div><div class='big'>" + i.qty + " " + escapeHtml(i.unit) + "</div><div class='actions'><button onclick='printLabel(\"" + i.id + "\")'>Print pallet QR</button><button class='ghost' onclick='editForm(\"" + i.id + "\")'>Edit</button></div></div>";
   }).join("");
 }
 function printLabel(id) {
@@ -96,7 +100,7 @@ function printLabel(id) {
     if (!url) return toast("Could not make QR", true);
     var w = window.open("", "_blank");
     if (!w) return toast("Allow pop-ups so the label can print.", true);
-    w.document.write("<html><body style='font-family:Arial;padding:16px'><div style='border:3px solid #0b1f3a;padding:16px;width:380px'><div style='background:#f5c518;font-weight:800;display:inline-block;padding:5px 8px'>FENCHEM PALLET</div><h1>" + escapeHtml(i.description) + "</h1><div>Material: <b>" + escapeHtml(i.materialNo) + "</b></div><div>Batch: <b>" + escapeHtml(i.batchNo) + "</b></div><div>Qty: <b>" + i.qty + " " + escapeHtml(i.unit) + "</b></div><div>Bay: <b>" + escapeHtml(i.bay || "not set") + "</b></div><img src='" + url + "' width='220'><div style='text-align:center'>" + escapeHtml(i.id) + "</div></div></body></html>");
+    w.document.write("<html><body style='font-family:Arial;padding:16px'><div style='border:3px solid #0b1f3a;padding:16px;width:380px'><div style='background:#f5c518;font-weight:800;display:inline-block;padding:5px 8px'>FENCHEM PALLET</div><h1>" + escapeHtml(i.description) + "</h1><div>Site: <b>" + escapeHtml(i.site || "") + "</b></div><div>Material: <b>" + escapeHtml(i.materialNo) + "</b></div><div>Batch: <b>" + escapeHtml(i.batchNo) + "</b></div><div>Qty: <b>" + i.qty + " " + escapeHtml(i.unit) + "</b></div><div>Bay: <b>" + escapeHtml(i.bay || "not set") + "</b></div><img src='" + url + "' width='220'><div style='text-align:center'>" + escapeHtml(i.id) + "</div></div></body></html>");
     w.document.close();
     setTimeout(function () { try { w.print(); } catch (e) {} }, 250);
   }, 80);
@@ -107,25 +111,30 @@ function drawReport() {
   var stats = document.getElementById("stats");
   if (stats) stats.innerHTML = "<div class='stat'><span class='muted'>Pallets / lots</span><b>" + state.items.length + "</b></div><div class='stat'><span class='muted'>Total qty</span><b>" + roundQty(units) + "</b></div><div class='stat'><span class='muted'>Expiring in 30d</span><b>" + exp.length + "</b></div>";
   var re = document.getElementById("r-exp");
-  if (re) re.innerHTML = exp.length ? "<table><thead><tr><th>Material</th><th>Batch</th><th>Bay</th><th>Days</th></tr></thead><tbody>" + exp.map(function (i) { return "<tr><td>" + escapeHtml(i.description) + "</td><td>" + escapeHtml(i.batchNo) + "</td><td>" + escapeHtml(i.bay) + "</td><td>" + remainingDays(i) + "</td></tr>"; }).join("") + "</tbody></table>" : "<p class='muted'>Nothing expiring in the next 30 days.</p>";
+  if (re) re.innerHTML = exp.length ? "<table><thead><tr><th>Site</th><th>Material</th><th>Batch</th><th>Bay</th><th>Days</th></tr></thead><tbody>" + exp.map(function (i) { return "<tr><td>" + escapeHtml(i.site) + "</td><td>" + escapeHtml(i.description) + "</td><td>" + escapeHtml(i.batchNo) + "</td><td>" + escapeHtml(i.bay) + "</td><td>" + remainingDays(i) + "</td></tr>"; }).join("") + "</tbody></table>" : "<p class='muted'>Nothing expiring in the next 30 days.</p>";
   var rh = document.getElementById("r-hist");
   if (rh) rh.innerHTML = state.txns.length ? "<table><thead><tr><th>When</th><th></th><th>Material</th><th>Qty</th></tr></thead><tbody>" + state.txns.slice(0, 25).map(function (t) { return "<tr><td>" + new Date(t.at).toLocaleString() + "</td><td>" + String(t.type).toUpperCase() + "</td><td>" + escapeHtml(t.name) + "</td><td>" + t.qty + "</td></tr>"; }).join("") + "</tbody></table>" : "<p class='muted'>No scans yet.</p>";
 }
 function printExpiring() { show("report"); drawReport(); window.print(); }
 function fillSettings() {
   if (document.getElementById("operator")) document.getElementById("operator").value = state.settings.operator || "";
-  if (document.getElementById("sitename")) document.getElementById("sitename").value = state.settings.siteName || "";
+  var siteEl = document.getElementById("sitename");
+  if (siteEl) siteEl.value = currentSite();
+  ["import-site","f-site"].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el && !el.value) el.value = currentSite();
+  });
 }
 function saveSettings() {
   state.settings.operator = document.getElementById("operator").value.trim();
-  state.settings.siteName = document.getElementById("sitename").value.trim() || "Warehouse";
+  state.settings.siteName = document.getElementById("sitename").value.trim() || "Mount Laurel";
   persistLocal(); toast("Saved");
 }
 function csvCell(v) { var s = v == null ? "" : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
 function exportCsv() {
-  var header = ["Bay","Location","Location Description","Material No","M code","English Description","Batch No","Vendor Batch","Quantity","Unit","Created On","Date of Manufacture","Expiration Date","PO Number","PO Item","Remaining days","Stock Age","Sales Name","Sales Department","Packaging","Profit Center"];
-  var rows = state.items.slice().sort(function (a, b) { return (a.bay || "").localeCompare(b.bay || ""); });
-  download("warehouse-inventory.csv", [header.join(",")].concat(rows.map(function (i) { return [i.bay, i.location, i.locationDesc, i.materialNo, i.mCode, i.description, i.batchNo, i.vendorBatch, i.qty, i.unit, i.createdOn, i.dateOfManufacture, i.expirationDate, i.poNumber, i.poItem, remainingDays(i), stockAge(i), i.salesName, i.salesDept, i.packaging, i.profitCenter].map(csvCell).join(","); })).join("\n"), "text/csv");
+  var header = ["Site","Bay","Location","Location Description","Material No","M code","English Description","Batch No","Vendor Batch","Quantity","Unit","Created On","Date of Manufacture","Expiration Date","PO Number","PO Item","Remaining days","Stock Age","Sales Name","Sales Department","Packaging","Profit Center"];
+  var rows = state.items.slice().sort(function (a, b) { return (a.site || "").localeCompare(b.site || "") || (a.bay || "").localeCompare(b.bay || ""); });
+  download("warehouse-inventory.csv", [header.join(",")].concat(rows.map(function (i) { return [i.site, i.bay, i.location, i.locationDesc, i.materialNo, i.mCode, i.description, i.batchNo, i.vendorBatch, i.qty, i.unit, i.createdOn, i.dateOfManufacture, i.expirationDate, i.poNumber, i.poItem, remainingDays(i), stockAge(i), i.salesName, i.salesDept, i.packaging, i.profitCenter].map(csvCell).join(","); })).join("\n"), "text/csv");
 }
 function backup() { download("inventory-backup.json", JSON.stringify(state, null, 2), "application/json"); }
 function restoreFile(file) {
@@ -169,7 +178,7 @@ function mapRow(headers, values) {
     return "";
   }
   function excelDate(v) { if (!v) return ""; if (/^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0, 10); return v; }
-  return normalizeItem({ materialNo: get("material no", "sku"), mCode: get("m code"), description: get("english description", "description"), bay: get("bay"), location: get("location"), locationDesc: get("location description"), batchNo: get("batch no", "batch"), vendorBatch: get("vendor batch"), qty: get("quantity", "qty"), unit: get("unit"), createdOn: excelDate(get("created on")), dateOfManufacture: excelDate(get("date of manufacture")), expirationDate: excelDate(get("expiration date", "expiry")), poNumber: get("po number"), poItem: get("po item"), salesName: get("sales name"), salesDept: get("sales department"), packaging: get("packaging"), profitCenter: get("profit center") });
+  return normalizeItem({ site: get("site", "warehouse", "plant", "warehouse site"), materialNo: get("material no", "sku"), mCode: get("m code"), description: get("english description", "description"), bay: get("bay"), location: get("location"), locationDesc: get("location description"), batchNo: get("batch no", "batch"), vendorBatch: get("vendor batch"), qty: get("quantity", "qty"), unit: get("unit"), createdOn: excelDate(get("created on")), dateOfManufacture: excelDate(get("date of manufacture")), expirationDate: excelDate(get("expiration date", "expiry")), poNumber: get("po number"), poItem: get("po item"), salesName: get("sales name"), salesDept: get("sales department"), packaging: get("packaging"), profitCenter: get("profit center") });
 }
 function importTable(rows) {
   if (!rows || rows.length < 2) { toast("No rows found in that file.", true); return; }
@@ -181,7 +190,11 @@ function importTable(rows) {
     if (!rec.batchNo) rec.batchNo = rec.vendorBatch || rec.materialNo || uid();
     if (!rec.description) rec.description = rec.materialNo;
     if (!rec.bay) rec.bay = rec.location || "Unassigned";
-    var idx = state.items.findIndex(function (x) { return String(x.materialNo) === rec.materialNo && String(x.batchNo) === rec.batchNo; });
+    if (!rec.site) {
+      var pick = ((document.getElementById("import-site") || {}).value) || currentSite();
+      rec.site = normSite(pick) || currentSite();
+    }
+    var idx = state.items.findIndex(function (x) { return String(x.materialNo) === rec.materialNo && String(x.batchNo) === rec.batchNo && String(x.site || "") === String(rec.site || ""); });
     if (idx >= 0) { rec.id = state.items[idx].id; state.items[idx] = rec; updated++; }
     else { rec.id = uid(); state.items.push(rec); added++; }
   }
