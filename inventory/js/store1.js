@@ -1,4 +1,16 @@
-var emptyState = function () { return { v: 2, settings: { siteName: "Mount Laurel warehouse", operator: "", lowStock: 0 }, items: [], txns: [] }; };
+var SITES = ["Mount Laurel", "Chino", "Grimes"];
+function normSite(v) {
+  var s = String(v || "").toLowerCase();
+  if (s.indexOf("chino") >= 0) return "Chino";
+  if (s.indexOf("grimes") >= 0) return "Grimes";
+  if (s.indexOf("laurel") >= 0 || s.indexOf("mount") >= 0) return "Mount Laurel";
+  if (SITES.indexOf(v) >= 0) return v;
+  return "";
+}
+function currentSite() {
+  return normSite((state.settings && state.settings.siteName) || "") || "Mount Laurel";
+}
+var emptyState = function () { return { v: 2, settings: { siteName: "Mount Laurel", operator: "", lowStock: 0 }, items: [], txns: [] }; };
 var state = emptyState();
 var mode = "in";
 var running = false;
@@ -47,7 +59,7 @@ function remainingDays(item) { return item.expirationDate ? daysBetween(today(),
 function stockAge(item) { var start = item.dateOfManufacture || item.createdOn; return start ? daysBetween(start, today()) : ""; }
 function roundQty(n) { return Math.round(n * 1000) / 1000; }
 function normalizeItem(i) {
-  return { id: i.id || uid(), materialNo: i.materialNo || i.sku || "", mCode: i.mCode || "", description: i.description || i.name || "", bay: i.bay || "", location: i.location || "", locationDesc: i.locationDesc || "", batchNo: i.batchNo || "", vendorBatch: i.vendorBatch || "", qty: Number(i.qty) || 0, unit: i.unit || "KG", createdOn: i.createdOn || (i.createdAt ? String(i.createdAt).slice(0, 10) : today()), dateOfManufacture: i.dateOfManufacture || "", expirationDate: i.expirationDate || "", poNumber: i.poNumber || "", poItem: i.poItem || "", salesName: i.salesName || "", salesDept: i.salesDept || "", packaging: i.packaging || "", profitCenter: i.profitCenter || "" };
+  return { id: i.id || uid(), site: normSite(i.site || i.warehouse || i.plant || "") || "", materialNo: i.materialNo || i.sku || "", mCode: i.mCode || "", description: i.description || i.name || "", bay: i.bay || "", location: i.location || "", locationDesc: i.locationDesc || "", batchNo: i.batchNo || "", vendorBatch: i.vendorBatch || "", qty: Number(i.qty) || 0, unit: i.unit || "KG", createdOn: i.createdOn || (i.createdAt ? String(i.createdAt).slice(0, 10) : today()), dateOfManufacture: i.dateOfManufacture || "", expirationDate: i.expirationDate || "", poNumber: i.poNumber || "", poItem: i.poItem || "", salesName: i.salesName || "", salesDept: i.salesDept || "", packaging: i.packaging || "", profitCenter: i.profitCenter || "" };
 }
 function escapeHtml(s) { return String(s).replace(/&/g, "&#38;").replace(/</g, "&#60;").replace(/>/g, "&#62;").replace(/"/g, "&#34;").replace(/'/g, "&#39;"); }
 function show(name, btn) {
@@ -86,7 +98,7 @@ function lookup(code) {
     box.innerHTML = "<b>Unknown</b><p class='muted'>" + escapeHtml(c) + "</p><button class='gold' onclick='openForm()'>Add as new material</button>";
     return;
   }
-  box.innerHTML = "<div class='muted'>" + (mode === "in" ? "Checking IN" : "Checking OUT") + "</div><div class='big'>" + escapeHtml(item.description) + "</div><p class='muted'>Material " + escapeHtml(item.materialNo) + "<br>Batch " + escapeHtml(item.batchNo) + "<br>Bay: <b>" + escapeHtml(item.bay || "not set") + "</b><br>On hand: <b>" + item.qty + " " + escapeHtml(item.unit) + "</b></p><label>How much?</label><div class='qty'><button type='button' onclick='nudge(-1)'>-</button><input id='qty' type='number' min='0.01' step='0.01' value='1' /><button type='button' onclick='nudge(1)'>+</button></div><label>Bay now</label><div class='grid2'><input id='move-bay' value='" + escapeHtml(item.bay || "") + "' /><input id='move-loc' value='" + escapeHtml(item.location || "") + "' /></div><label>Note</label><input id='note' /><div style='height:10px'></div><button class='" + (mode === "in" ? "inbtn" : "outbtn") + "' onclick='confirmMove(\"" + item.id + "\")'>" + (mode === "in" ? "Confirm IN" : "Confirm OUT") + "</button>";
+  box.innerHTML = "<div class='muted'>" + (mode === "in" ? "Checking IN" : "Checking OUT") + "</div><div class='big'>" + escapeHtml(item.description) + "</div><p class='muted'>Material " + escapeHtml(item.materialNo) + "<br>Batch " + escapeHtml(item.batchNo) + "<br>Site: <b>" + escapeHtml(item.site || currentSite()) + "</b><br>Bay: <b>" + escapeHtml(item.bay || "not set") + "</b><br>On hand: <b>" + item.qty + " " + escapeHtml(item.unit) + "</b></p><label>How much?</label><div class='qty'><button type='button' onclick='nudge(-1)'>-</button><input id='qty' type='number' min='0.01' step='0.01' value='1' /><button type='button' onclick='nudge(1)'>+</button></div><label>Bay now</label><div class='grid2'><input id='move-bay' value='" + escapeHtml(item.bay || "") + "' /><input id='move-loc' value='" + escapeHtml(item.location || "") + "' /></div><label>Note</label><input id='note' /><div style='height:10px'></div><button class='" + (mode === "in" ? "inbtn" : "outbtn") + "' onclick='confirmMove(\"" + item.id + "\")'>" + (mode === "in" ? "Confirm IN" : "Confirm OUT") + "</button>";
 }
 function nudge(d) { var el = document.getElementById("qty"); el.value = Math.max(0.01, (Number(el.value) || 1) + d); }
 function confirmMove(id) {
