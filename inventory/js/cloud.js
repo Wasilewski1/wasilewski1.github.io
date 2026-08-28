@@ -1,6 +1,7 @@
 var CLOUD_NEW = "https://extendsclass.com/api/json-storage/bin";
 var CLOUD_GET = "https://extendsclass.com/api/json-storage/bin/";
 var POINTER = "https://ntfy.sh/fenchem-wasilewski-stock";
+var PINNED = ["dcdbdfa", "ccafbdb", "eadacac", "ebcabea"];
 var cloudTimer = 0;
 var cloudBusy = false;
 var lastCloudErr = "";
@@ -32,33 +33,33 @@ function applyCloud(data) {
   return true;
 }
 async function pointerIds() {
-  var ids = [];
+  var ids = PINNED.slice();
   try {
     var cached = localStorage.getItem("scantrack.cloudId");
     if (cached) ids.push(cached);
   } catch (e) {}
   try {
     var res = await fetch(POINTER + "/json?poll=1&since=all&t=" + Date.now(), { cache: "no-store" });
-    if (!res.ok) throw new Error("pointer " + res.status);
-    var txt = await res.text();
-    txt.trim().split("\n").forEach(function (line) {
-      if (!line) return;
-      try {
-        var msg = JSON.parse(line);
-        if (msg && msg.message) ids.push(String(msg.message).trim());
-      } catch (e) {}
-    });
+    if (res.ok) {
+      var txt = await res.text();
+      txt.trim().split("\n").forEach(function (line) {
+        if (!line) return;
+        try {
+          var msg = JSON.parse(line);
+          if (msg && msg.message) ids.push(String(msg.message).trim());
+        } catch (e) {}
+      });
+    }
   } catch (e) {
     showCloudErr(String(e.message || e));
   }
   var out = [];
   var seen = {};
-  for (var i = ids.length - 1; i >= 0; i--) {
-    if (!ids[i] || seen[ids[i]]) continue;
-    seen[ids[i]] = 1;
-    out.push(ids[i]);
-    if (out.length >= 12) break;
-  }
+  ids.forEach(function (id) {
+    if (!id || seen[id]) return;
+    seen[id] = 1;
+    out.push(id);
+  });
   return out;
 }
 async function fetchBin(id) {
@@ -76,11 +77,10 @@ async function pullCloud() {
       try {
         var data = await fetchBin(ids[i]);
         var n = data && data.items ? data.items.length : 0;
-        if (n && (!best || n >= best.items.length)) {
+        if (n && (!best || n > best.items.length)) {
           best = data;
           bestId = ids[i];
         }
-        if (best && best.items.length >= 1 && i >= 3 && n === 0) continue;
       } catch (e) {}
     }
     if (best && applyCloud(best)) {
@@ -107,7 +107,7 @@ async function pullCloud() {
 async function pushCloud() {
   if (cloudBusy) return;
   if (!state.items || !state.items.length) return;
-  if (Date.now() - lastPullAt < 1500) return;
+  if (Date.now() - lastPullAt < 2000) return;
   cloudBusy = true;
   try {
     var created = await fetch(CLOUD_NEW, { method: "POST", headers: { "Content-Type": "text/plain" }, body: cloudPayload() });
@@ -142,7 +142,7 @@ persistLocal = function () {
   _persist();
   if (!state.items || !state.items.length) return;
   clearTimeout(cloudTimer);
-  cloudTimer = setTimeout(pushCloud, 1000);
+  cloudTimer = setTimeout(pushCloud, 1200);
 };
 saveCloud = persistLocal;
 loadCloud = pullCloud;
