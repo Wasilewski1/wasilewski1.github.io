@@ -7,10 +7,110 @@
   <meta name="apple-mobile-web-app-title" content="Fenchem Inventory" />
   <meta name="theme-color" content="#0b1f3a" />
   <title>Fenchem Inventory</title>
-  <link rel="stylesheet" href="style.css" />
+  <style>
+    :root { --navy:#0b1f3a; --navy-2:#132a4a; --gold:#f5c518; --gold-2:#e0b000; --paper:#f4f1ea; --card:#fff; --ink:#122033; --muted:#5b6b7c; --line:#d9d3c7; --in:#1a7f4b; --out:#c05612; --danger:#b42318; --ok:#1a7f4b; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    html,body { background:var(--paper); color:var(--ink); font-family:"Segoe UI",system-ui,-apple-system,sans-serif; }
+    body { padding-bottom:88px; }
+    .top { background:linear-gradient(160deg,var(--navy),var(--navy-2)); color:#fff; padding:18px 18px 22px; }
+    .top-inner { max-width:980px; margin:0 auto; }
+    .brand { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+    .mark { background:var(--gold); color:var(--navy); font-weight:800; letter-spacing:.08em; font-size:11px; padding:4px 8px; border-radius:4px; display:inline-block; margin-bottom:8px; }
+    .top h1 { font-size:22px; font-weight:750; }
+    .top p { color:#c9d4e3; font-size:13px; margin-top:4px; }
+    .sync { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18); border-radius:999px; padding:6px 10px; font-size:11px; color:#d7e2ef; white-space:nowrap; }
+    .dot { width:7px; height:7px; border-radius:50%; display:inline-block; margin-right:6px; background:#f5c518; }
+    .dot.ok { background:#3ddc84; }
+    .wrap { max-width:980px; margin:0 auto; padding:16px 14px 24px; }
+    .page { display:none; } .page.on { display:block; }
+    .modes { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+    .mode { border:0; border-radius:14px; padding:16px 10px; font-size:18px; font-weight:800; color:#fff; cursor:pointer; opacity:.42; }
+    .mode.in { background:var(--in); } .mode.out { background:var(--out); } .mode.on { opacity:1; }
+    #reader { width:100%; min-height:250px; background:#0b1220; border-radius:16px; overflow:hidden; }
+    .hint { color:var(--muted); font-size:13px; margin:8px 0 12px; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:16px; padding:16px; margin:10px 0; }
+    .card h3 { font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
+    label { display:block; font-size:12px; color:var(--muted); margin:8px 0 4px; font-weight:700; }
+    input,select,textarea { width:100%; background:#fbfaf7; color:var(--ink); border:1px solid var(--line); border-radius:10px; padding:11px 12px; font-size:15px; }
+    button { border:0; border-radius:10px; padding:11px 14px; font-weight:750; cursor:pointer; background:var(--navy); color:#fff; font-size:14px; }
+    .primary { background:var(--navy); width:100%; padding:14px; font-size:16px; }
+    .gold { background:var(--gold); color:var(--navy); }
+    .inbtn { background:var(--in); width:100%; padding:14px; font-size:16px; }
+    .outbtn { background:var(--out); width:100%; padding:14px; font-size:16px; }
+    .ghost { background:#fff; color:var(--navy); border:1px solid var(--line); }
+    .row { display:flex; gap:8px; flex-wrap:wrap; } .row > * { flex:1; min-width:120px; }
+    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+    @media (max-width:720px){ .grid2,.grid3 { grid-template-columns:1fr; } }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th,td { text-align:left; padding:9px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+    th { color:var(--navy); font-size:11px; text-transform:uppercase; background:var(--gold); }
+    .tabs { position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:1px solid var(--line); display:grid; grid-template-columns:repeat(4,1fr); padding:6px 6px calc(8px + env(safe-area-inset-bottom)); }
+    .tabs button { background:transparent; color:var(--muted); font-size:11px; font-weight:750; padding:8px 4px; }
+    .tabs button.on { color:var(--navy); }
+    .qty { display:flex; align-items:center; gap:8px; }
+    .qty input { text-align:center; font-size:22px; font-weight:800; }
+    .qty button { width:46px; height:46px; font-size:22px; }
+    .toast { position:fixed; top:12px; left:12px; right:12px; max-width:956px; margin:0 auto; background:var(--navy); color:#fff; padding:12px 14px; border-radius:12px; display:none; z-index:40; font-weight:700; }
+    .toast.on { display:block; } .toast.err { background:var(--danger); }
+    .big { font-size:26px; font-weight:800; } .muted { color:var(--muted); }
+    .item { background:#fff; border:1px solid var(--line); border-radius:16px; padding:14px; margin-bottom:10px; }
+    .badge { display:inline-block; font-size:11px; font-weight:800; padding:3px 8px; border-radius:999px; }
+    .badge-ok { background:#e5f6ec; color:var(--ok); } .badge-low { background:#fde7e5; color:var(--danger); } .badge-exp { background:#fff3cc; color:#7a5b00; }
+    .actions button { margin:6px 6px 0 0; }
+    .modal-bg { position:fixed; inset:0; background:rgba(11,31,58,.55); display:none; z-index:30; padding:12px; overflow:auto; }
+    .modal-bg.open { display:block; }
+    .modal { background:#fff; border-radius:18px; max-width:860px; margin:12px auto 40px; padding:18px; }
+    .modal h2 { font-size:20px; margin-bottom:4px; } .req { color:var(--danger); }
+    .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+    .stat { background:#fff; border:1px solid var(--line); border-radius:14px; padding:12px; } .stat b { display:block; font-size:22px; }
+  </style>
 </head>
 <body>
-  <div id="app-root"></div>
+  <div class="toast" id="toast"></div>
+  <header class="top"><div class="top-inner brand"><div><div class="mark">FENCHEM</div><h1>Warehouse Inventory</h1><p>Scan pallets in and out. Same list on phone and computer.</p></div><div class="sync"><span class="dot" id="dot"></span><span id="synctxt">Connecting…</span></div></div></header>
+  <main class="wrap">
+    <section class="page on" id="page-scan">
+      <div class="modes"><button class="mode in on" id="btn-in" onclick="setMode('in')">SCAN IN</button><button class="mode out" id="btn-out" onclick="setMode('out')">SCAN OUT</button></div>
+      <div id="reader"></div>
+      <p class="hint" id="cam-hint">Allow the camera, then point it at the pallet QR.</p>
+      <div class="card"><label>Or type Material No / Batch / M code</label><div class="row"><input id="manual" placeholder="e.g. 10001234 or batch" /><button onclick="lookup(document.getElementById('manual').value)">Find</button></div></div>
+      <div class="card" id="match">Scan a pallet label to check material in or out.</div>
+    </section>
+    <section class="page" id="page-items">
+      <div class="row" style="margin-bottom:10px"><input id="search" placeholder="Search material, batch, location, PO…" oninput="drawItems()" /><button class="gold" style="flex:0 0 auto" onclick="openForm()">+ Add material</button></div>
+      <div id="items"></div>
+    </section>
+    <section class="page" id="page-report">
+      <div class="stats" id="stats"></div>
+      <div class="row" style="margin:12px 0"><button class="ghost" onclick="exportCsv()">Download Excel CSV</button></div>
+      <div class="card"><h3>Expiring / expired</h3><div id="r-exp"></div></div>
+      <div class="card"><h3>Recent scans</h3><div id="r-hist"></div></div>
+    </section>
+    <section class="page" id="page-more">
+      <div class="card"><label>Your name</label><input id="operator" placeholder="e.g. Gabe" /><label>Site name</label><input id="sitename" placeholder="Mount Laurel warehouse" /><div style="height:10px"></div><button class="primary" onclick="saveSettings()">Save</button></div>
+      <div class="card"><p class="muted" style="margin-bottom:10px">On iPhone: Share → Add to Home Screen.</p><div class="row"><button class="ghost" onclick="backup()">Download backup</button><button class="ghost" onclick="document.getElementById('restore').click()">Restore backup</button></div><input id="restore" type="file" accept="application/json" hidden onchange="restoreFile(this.files[0])" /></div>
+    </section>
+  </main>
+  <nav class="tabs">
+    <button class="on" data-p="scan" onclick="show('scan', this)">Scan</button>
+    <button data-p="items" onclick="show('items', this)">Materials</button>
+    <button data-p="report" onclick="show('report', this)">Report</button>
+    <button data-p="more" onclick="show('more', this)">More</button>
+  </nav>
+  <div class="modal-bg" id="modal" onclick="if(event.target===this)closeForm()">
+    <div class="modal">
+      <h2 id="form-title">Add material / pallet</h2>
+      <p class="muted" style="margin-bottom:12px">Same fields as the warehouse sheet. <span class="req">*</span> required.</p>
+      <input type="hidden" id="f-id" />
+      <div class="card" style="margin:0 0 12px;box-shadow:none"><h3>Material</h3><div class="grid2"><div><label>Material No <span class="req">*</span></label><input id="f-materialNo" /></div><div><label>M code</label><input id="f-mCode" /></div></div><label>English Description <span class="req">*</span></label><input id="f-description" /></div>
+      <div class="card" style="margin:0 0 12px;box-shadow:none"><h3>Warehouse</h3><div class="grid2"><div><label>Location</label><input id="f-location" /></div><div><label>Location Description</label><input id="f-locationDesc" /></div><div><label>Packaging</label><input id="f-packaging" /></div><div><label>Profit Center</label><input id="f-profitCenter" /></div></div></div>
+      <div class="card" style="margin:0 0 12px;box-shadow:none"><h3>Batch / pallet</h3><div class="grid2"><div><label>Batch No <span class="req">*</span></label><input id="f-batchNo" /></div><div><label>Vendor Batch</label><input id="f-vendorBatch" /></div><div><label>Quantity <span class="req">*</span></label><input id="f-qty" type="number" step="0.01" /></div><div><label>Unit</label><select id="f-unit"><option>KG</option><option>LB</option><option>MT</option><option>DRUM</option><option>BAG</option><option>IBC</option><option>PALLET</option><option>EA</option></select></div></div></div>
+      <div class="card" style="margin:0 0 12px;box-shadow:none"><h3>Dates</h3><div class="grid3"><div><label>Created On</label><input id="f-createdOn" type="date" /></div><div><label>Date of Manufacture</label><input id="f-dom" type="date" /></div><div><label>Expiration Date</label><input id="f-exp" type="date" /></div></div><p class="hint">Remaining days and stock age calculate automatically.</p></div>
+      <div class="card" style="margin:0 0 12px;box-shadow:none"><h3>PO / sales</h3><div class="grid2"><div><label>PO Number</label><input id="f-poNumber" /></div><div><label>PO Item</label><input id="f-poItem" /></div><div><label>Sales Name</label><input id="f-salesName" /></div><div><label>Sales Department</label><input id="f-salesDept" /></div></div></div>
+      <div class="row"><button class="ghost" onclick="closeForm()">Cancel</button><button class="gold" onclick="saveForm()">Save material</button></div>
+    </div>
+  </div>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script src="js/app.js"></script>
