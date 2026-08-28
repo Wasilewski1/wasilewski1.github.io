@@ -6,6 +6,7 @@ var cloudTimer = 0;
 var cloudBusy = false;
 var lastCloudErr = "";
 var lastPullAt = 0;
+var lastPushAt = 0;
 function showCloudErr(msg) {
   lastCloudErr = msg || "";
   var el = document.getElementById("cloud-err");
@@ -33,26 +34,29 @@ function applyCloud(data) {
   return true;
 }
 async function pointerIds() {
-  var ids = PINNED.slice();
-  try {
-    var cached = localStorage.getItem("scantrack.cloudId");
-    if (cached) ids.push(cached);
-  } catch (e) {}
+  var ids = [];
   try {
     var res = await fetch(POINTER + "/json?poll=1&since=all&t=" + Date.now(), { cache: "no-store" });
     if (res.ok) {
       var txt = await res.text();
+      var found = [];
       txt.trim().split("\n").forEach(function (line) {
         if (!line) return;
         try {
           var msg = JSON.parse(line);
-          if (msg && msg.message) ids.push(String(msg.message).trim());
+          if (msg && msg.message) found.push(String(msg.message).trim());
         } catch (e) {}
       });
+      for (var i = found.length - 1; i >= 0; i--) ids.push(found[i]);
     }
   } catch (e) {
     showCloudErr(String(e.message || e));
   }
+  try {
+    var cached = localStorage.getItem("scantrack.cloudId");
+    if (cached) ids.push(cached);
+  } catch (e) {}
+  PINNED.forEach(function (id) { ids.push(id); });
   var out = [];
   var seen = {};
   ids.forEach(function (id) {
@@ -60,7 +64,7 @@ async function pointerIds() {
     seen[id] = 1;
     out.push(id);
   });
-  return out;
+  return out.slice(0, 15);
 }
 async function fetchBin(id) {
   var res = await fetch(CLOUD_GET + id + "?t=" + Date.now(), { cache: "no-store" });
@@ -68,6 +72,7 @@ async function fetchBin(id) {
   return res.json();
 }
 async function pullCloud() {
+  if (Date.now() - lastPushAt < 2500) return false;
   setSync(false, "Loading cloud...");
   try {
     var ids = await pointerIds();
@@ -77,10 +82,9 @@ async function pullCloud() {
       try {
         var data = await fetchBin(ids[i]);
         var n = data && data.items ? data.items.length : 0;
-        if (n && (!best || n > best.items.length)) {
-          best = data;
-          bestId = ids[i];
-        }
+        if (!n) continue;
+        var newer = !best || n > best.items.length || (n === best.items.length && String(data.updatedAt || "") >= String(best.updatedAt || ""));
+        if (newer) { best = data; bestId = ids[i]; }
       } catch (e) {}
     }
     if (best && applyCloud(best)) {
@@ -89,27 +93,24 @@ async function pullCloud() {
       setSync(true, "Saved in cloud · " + best.items.length + " materials");
       showCloudErr("");
       if (typeof paint === "function") paint();
-      toast("Loaded " + best.items.length + " materials from cloud");
       return true;
     }
     if (restoreLocal()) setSync(true, state.items.length ? ("On this device · " + state.items.length) : "Ready on this device");
     else setSync(true, "Ready on this device");
-    toast("Cloud list not found on this network. Stay on the same Wi-Fi as the PC, or use cellular.", true);
     if (typeof paint === "function") paint();
     return false;
   } catch (e) {
     showCloudErr(String(e.message || e));
     if (restoreLocal()) setSync(true, "Offline — using this device");
     else setSync(false, "Cloud blocked on this Wi-Fi");
-    toast(String(e.message || e), true);
     if (typeof paint === "function") paint();
     return false;
   }
 }
-async function pushCloud() {
+async function pushCloud(force) {
   if (cloudBusy) return;
   if (!state.items || !state.items.length) return;
-  if (Date.now() - lastPullAt < 2000) return;
+  if (!force && Date.now() - lastPullAt < 1500) return;
   cloudBusy = true;
   try {
     var created = await fetch(CLOUD_NEW, { method: "POST", headers: { "Content-Type": "text/plain" }, body: cloudPayload() });
@@ -121,6 +122,7 @@ async function pushCloud() {
     var ping = await fetch(POINTER, { method: "POST", headers: { "Content-Type": "text/plain" }, body: id });
     if (!ping.ok) throw new Error("index blocked (" + ping.status + ")");
     try { localStorage.setItem("scantrack.cloudId", id); } catch (e) {}
+    lastPushAt = Date.now();
     setSync(true, "Saved in cloud · " + state.items.length + " materials");
     showCloudErr("");
   } catch (e) {
@@ -144,7 +146,7 @@ persistLocal = function () {
   _persist();
   if (!state.items || !state.items.length) return;
   clearTimeout(cloudTimer);
-  cloudTimer = setTimeout(pushCloud, 1200);
+  cloudTimer = setTimeout(function () { pushCloud(true); }, 400);
 };
 saveCloud = persistLocal;
 loadCloud = pullCloud;
@@ -153,7 +155,7 @@ document.addEventListener("visibilitychange", function () {
 });
 setTimeout(function () { try { pullCloud(); } catch (e) {} }, 400);
 setTimeout(function () {
-  ["js/clear.js?v=1", "js/syncbtn.js?v=1"].forEach(function (src) {
+  ["js/clear.js?v=1", "js/syncbtn.js?v=1", "js/scancloud.js?v=1"].forEach(function (src) {
     var s = document.createElement("script");
     s.src = src;
     document.body.appendChild(s);
